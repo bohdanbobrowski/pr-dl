@@ -47,6 +47,10 @@ if len(sys.argv) > 1:
             # 2.2. Szukamy w nowy sposób
             links = links + re.findall('data-media={"id":[0-9],"file":"([^"]*)","provider":"audio","uid":"[^"]*","length":[0-9]*,"autostart":[a-z]*,"link":"[^"]*","title":"[^"]*"', www.contents)
             titles = titles + re.findall('data-media={"id":[0-9],"file":"[^"]*","provider":"audio","uid":"[^"]*","length":[0-9]*,"autostart":[a-z]*,"link":"[^"]*","title":"([^"]*)"', www.contents)
+            # 2.3. Jeżeli te dwa sposoby nie przyniosły skutku, szukamy raz jeszcze inaczej:
+            if(len(links)==0):
+                links = re.findall('"file":"([^"]*)"',www.contents)
+                titles = re.findall('"title":"([^"]*)"',www.contents)
             Separator()
             print 'Znaleziono:'
             print str(len(links)) + ' linków'
@@ -59,9 +63,6 @@ if len(sys.argv) > 1:
             print titles
             Separator()
             print 'Rozpoczynamy pobieranie:'
-            if(len(links)==0):
-                links = re.findall('"file":"([^"]*)"',www.contents)
-                titles = re.findall('"title":"([^"]*)"',www.contents)
             if(len(links) == len(titles) and len(links) > 0):
                 a = 0
                 while a < len(links):
