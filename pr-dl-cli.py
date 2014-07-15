@@ -11,6 +11,14 @@ import urllib2
 from os.path import expanduser
 home = expanduser("~")
 
+def Separator():
+    rows, columns = os.popen('stty size', 'r').read().split()
+    columns = int(columns)
+    separator = ''
+    for x in range(0, columns):
+        separator = separator + '-'
+    print separator
+
 class PobierzStrone:
     def __init__(self):
         self.contents = ''
@@ -36,28 +44,37 @@ if len(sys.argv) > 1:
             # 2.1. Szukamy w stary sposób
             links = [] + re.findall('onclick="javascript:playFile\(\'[^\']*\',\'([^\']*)\',\'[^\']*\',\'[^\']*\',\'[^\']*\',\'1\',\'[^\']*\'\);', www.contents)
             titles = [] + re.findall('onclick="javascript:playFile\(\'[^\']*\',\'[^\']*\',\'([^\']*)\',\'[^\']*\',\'[^\']*\',\'1\',\'[^\']*\'\);', www.contents)
-            # print www.contents
             # 2.2. Szukamy w nowy sposób
-            # data-media={"id":1084883,"file":"http://static.polskieradio.pl/45b8b22e-2f2e-49c2-a99b-48fef8e4fa85.mp3","provider":"audio","uid":"45b8b22e-2f2e-49c2-a99b-48fef8e4fa85","length":873,"autostart":true,"link":"/39/0/Artykul/1145828,Kongres-Wiedenski-–-narodziny-nowoczesnej-dyplomacji","title":"Kongres%20Wiede%C5%84ski%20%E2%80%93%20narodziny%20nowoczesnej%20dyplomacji"
             links = links + re.findall('data-media={"id":[0-9],"file":"([^"]*)","provider":"audio","uid":"[^"]*","length":[0-9]*,"autostart":[a-z]*,"link":"[^"]*","title":"[^"]*"', www.contents)
             titles = titles + re.findall('data-media={"id":[0-9],"file":"[^"]*","provider":"audio","uid":"[^"]*","length":[0-9]*,"autostart":[a-z]*,"link":"[^"]*","title":"([^"]*)"', www.contents)
+            Separator()
+            print 'Znaleziono:'
+            print str(len(links)) + ' linków'
+            print str(len(titles)) + ' tytułów'
+            Separator()
+            print 'Linki:'
+            print links
+            Separator()
+            print 'Tytuły:'
+            print titles
+            Separator()
+            print 'Rozpoczynamy pobieranie:'
             if(len(links)==0):
                 links = re.findall('"file":"([^"]*)"',www.contents)
-                # print len(links)
-                # print links
                 titles = re.findall('"title":"([^"]*)"',www.contents)
-                # print len(titles)
-                # print titles            
             if(len(links) == len(titles) and len(links) > 0):
                 a = 0
                 while a < len(links):
                     url = links[a]
                     target_dir = home+'/'
-                    if not url.find('static.polskieradio.pl'):
+                    if url.find('static.polskieradio.pl') == -1:
                         url = 'http://static.polskieradio.pl/'+url+'.mp3'
                     print (str(a) + ". " + url)
                     title = titles[a]
                     title = urllib2.unquote(title)
+                    title = title.replace('?','')
+                    title = title.replace('(','')
+                    title = title.replace(')','')
                     title = title.replace(':','_')
                     title = title.replace(' ','_')
                     title = title.replace('/','_')
@@ -67,6 +84,7 @@ if len(sys.argv) > 1:
                     title = title.replace('_-_','-')
                     title = title.replace('_-_','-')
                     print 'Tytuł: '+title
+                    print 'Link: '+url
                     if(title != ''):
                         file_name = target_dir + title+'.mp3'
                     else:
@@ -90,5 +108,7 @@ if len(sys.argv) > 1:
                             status = status + chr(8)*(len(status)+1)                
                             sys.stdout.write(status)
                         f.close()
+                    else:
+                        print '[!] Plik o tej nazwie istnieje w katalogu docelowym'
                     a += 1
 
