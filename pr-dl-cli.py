@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 #-*- coding: utf-8 -*-
-import os
-import os.path
 import json
+import os
+from os.path import expanduser
+import pycurl
 import re
 import sys
-import pycurl
+import urllib
 import urllib2
-from os.path import expanduser
-home = expanduser("~")
 
+home = expanduser("~")
 save_all = 0
 
 def getin():
@@ -74,30 +74,134 @@ if len(sys.argv) > 1:
         Separator('#')
         print "Analizowany url: "+sys.argv[1]
         www = PobierzStrone()
-        c = pycurl.Curl()
+        c = pycurl.Curl()        
         c.setopt(c.URL, sys.argv[1])
         c.setopt(c.WRITEFUNCTION, www.body_callback)
+        headers = ['Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8','Accept-Language: pl,en-us;q=0.7,en;q=0.3','Accept-Charset: ISO-8859-2,utf-8;q=0.7,*;q=0.7','Content-Type: application/x-www-form-urlencoded']#,'Content-Length: 65']
+        c.setopt(c.HEADER, 1);
+        c.setopt(c.HTTPHEADER, headers)
+        c.setopt(c.FOLLOWLOCATION, 1)
+        c.setopt(c.USERAGENT,'Mozilla/5.0 (X11; U; Linux i686; pl; rv:1.8.0.3) Gecko/20060426 Firefox/1.5.0.3')
+        c.setopt(c.REFERER, sys.argv[1])        
+        c.setopt(c.COOKIEFILE, '')
         c.perform()
-        c.close()
         
-        """
-        [TO-DO]:
-        Część treści - jeżeli pojawia sie 'paginacja' - doładowywana jest przez AJAX'a
+        # 2.1. Ładujemy podstrony:        
+        # 2.1.1. Analizujemy linki do podstron
+        try:
+            tabId =         int(re.search('<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[\s]*([0-9]*),[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*, [a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\)', www.contents).group(1))
+            boxInstanceId = int(re.search('<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([\s]*([0-9]*),[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*, [a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\)', www.contents).group(1))
+            sectionId =     int(re.search('<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[\s]*([0-9]*),[0-9\s]*,[0-9\s]*, [a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\)', www.contents).group(1))
+            categoryId =    int(re.search('<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[\s]*([0-9]*),[0-9\s]*, [a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\)', www.contents).group(1))
+            categoryType =  int(re.search('<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[\s]*([0-9]*), [a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\)', www.contents).group(1))
+            queryString =   str(re.search('<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[\s]*[0-9]*, &quot;&quot;, [0-9]*, &quot;([a-z0-9&;=]*)&quot;', www.contents).group(1)).replace('&amp;','&')
+            tagIndexId =    int(re.search('<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*, &quot;&quot;, ([0-9]*)[a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\)', www.contents).group(1))
+            name = str(re.search('<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[\s]*[0-9]*, &quot;&quot;, [0-9]*, &quot;[a-z0-9&;=]*&quot;, &quot;([a-zA-Z0-9\s]*)', www.contents).group(1))
+            pagerMode = '0'
+            openArticlesInParentTemplate = 'True'
+            idSectionFromUrl = sectionId
+            maxDocumentAge = '-1'
+            showCategoryForArticle = 'False'
+            post = {
+                'tabId' : tabId,
+                'boxInstanceId' : boxInstanceId,
+                'sectionId' : sectionId,
+                'categoryId' : categoryId,
+                'categoryType' : categoryType,
+                'subjectIds' : "",
+                'tagIndexId' : tagIndexId,
+                'queryString' : queryString,
+                'name' : name,
+                'pagerMode' : 0,
+                'openArticlesInParentTemplate' : "True",
+                'idSectionFromUrl' : sectionId,
+                'maxDocumentAge' : 1000,
+                # 'showCategoryForArticle' : "False"
+            }
+            analizuj_podstrony = 1
+        except IndexError:
+            analizuj_podstrony = 0
 
-        link:
-        <a id="ctl00_nextAnchor" onclick="LoadTab(10281, 35378, 0, 9, 396, 4, &quot;&quot;, 445, &quot;stid=9&amp;pid=7422&amp;cttype=4&amp;ctid=396&quot;, &quot;Poprzednie audycje&quot;, &quot;True&quot;, 9, 700, 5);">Następna strona&nbsp;»</a>
-        url:
-        http://www.polskieradio.pl/CMS/DocumentsListsManagement/DocumentsListTabContent.aspx/GetTabContent
-        post:
-        {tabId : 35378, boxInstanceId : 10281, sectionId : 9, categoryId : 396, categoryType : 4, subjectIds : '', tagIndexId : 445, queryString : 'stid=9&pid=7422&cttype=4&ctid=396', name : 'Poprzednie audycje', pageNumber : 2, pagerMode : 1, openArticlesInParentTemplate : 'True', idSectionFromUrl : 9, maxDocumentAge : 700 }
-        {tabId : 35378, boxInstanceId : 10281, sectionId : 9, categoryId : 396, categoryType : 4, subjectIds : '', tagIndexId : 445, queryString : 'stid=9&pid=7422&cttype=4&ctid=396', name : 'Poprzednie audycje', pageNumber : 4, pagerMode : 1, openArticlesInParentTemplate : 'True', idSectionFromUrl : 9, maxDocumentAge : 700 }
-        """
-        
-        # 2.1. Szukamy w stary sposób
+        pages = [] + re.findall('<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*, [a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\);" class="">[\s]*([0-9]*)', www.contents)        
+
+        # Niestety ustawiam na 0 by nie tracić czasu na niedziałającą paginację (szczegóły niżej):
+        analizuj_podstrony = 0
+
+        if(analizuj_podstrony == 1 and len(pages)>0):
+            print "Znaleziono "+str(pages[-1])+" podstron."
+            p = 2
+            while p <= int(pages[-1]):
+                post['pageNumber'] = p
+                post_data = json.dumps(post)
+                print post_data
+                www2 = PobierzStrone()
+                c.setopt(c.URL, 'http://www.polskieradio.pl/CMS/DocumentsListsManagement/DocumentsListTabContent.aspx/GetTabContent')
+                c.setopt(c.POST, 1)
+                c.setopt(c.POSTFIELDS, post_data)
+                c.setopt(c.WRITEFUNCTION, www2.body_callback)
+                headers = ['Accept: application/json, text/javascript, */*; q=0.01','Accept-Language: pl,en-US;q=0.8,en;q=0.6,ru;q=0.4','Content-Type: application/json; charset=UTF-8']#,'Content-Length: 65']
+                c.setopt(c.HEADER, 0);
+                c.setopt(c.HTTPHEADER, headers)
+                c.setopt(c.FOLLOWLOCATION, 1)
+                c.setopt(c.USERAGENT,'Mozilla/5.0 (X11; U; Linux i686; pl; rv:1.8.0.3) Gecko/20060426 Firefox/1.5.0.3')
+                c.setopt(c.REFERER, sys.argv[1])        
+                c.perform()
+                print www2.contents
+                print "- pobieram "+str(p)+" podstronę"
+                p = p+1 
+                """
+                Próbuje ogarnąć ta paginacje ale ciągle wywala błąd:
+                at System.Linq.Enumerable.First[TSource](IEnumerable`1 source)
+                at Billennium.PR.Business.Logic.Components.DocumentsListsLogic.<>c__DisplayClass52.<GetTab>b__51(IDbConnection conn)
+                at Billennium.PR.Business.Persistence.MsSqlServer.DbConnectionProvider.UsingConnection(Action`1 codeBlock, Action`2 finallyBlock)
+                at Billennium.PR.Business.Logic.Components.DocumentsListsLogic.GetTab(Int32 tabId)
+                at Billennium.PR.Web.Portal.CMS.DocumentsListsManagement.DocumentsListTabContent.GetTabContent(Int32 tabId, Int32 boxInstanceId, Int32 sectionId, Int32 categoryId, Int32 categoryType, String subjectIds, Int32 tagIndexId, String queryString, String name, Int32 pageNumber, Int32 pagerMode, String openArticlesInParentTemplate, Int32 idSectionFromUrl, Int32 maxDocumentAge)
+
+                specyfikacja funkcji GetTabContent:
+                GetTabContent(
+                    Int32 tabId,
+                    Int32 boxInstanceId,
+                    Int32 sectionId,
+                    Int32 categoryId,
+                    Int32 categoryType,
+                    String subjectIds,
+                    Int32 tagIndexId,
+                    String queryString,
+                    String name,
+                    Int32 pageNumber,
+                    Int32 pagerMode,
+                    String openArticlesInParentTemplate,
+                    Int32 idSectionFromUrl,
+                    Int32 maxDocumentAge
+                )
+
+                moje query:
+                {
+                    "tabId": 5677,
+                    "boxInstanceId": 16115,
+                    "sectionId": 8,
+                    "showCategoryForArticle": "False",
+                    "queryString": "stid=8&pid=7298&cttype=4&ctid=405",
+                    "subjectIds": "",
+                    "openArticlesInParentTemplate": "True",
+                    "pagerMode": 0,
+                    "name": "Poprzednie audycje",
+                    "idSectionFromUrl": 8,
+                    "tagIndexId": 444,
+                    "pageNumber": 3,
+                    "maxDocumentAge": -1,
+                    "categoryType": 4,
+                    "categoryId": 405
+                }
+
+                Podejżewam że coś z ciastkami albo naglowkami jest nie teges.
+                """
+
+        c.close()
+
+        # 2.2. Szukamy pokastów:
         links = [] + re.findall('onclick="javascript:playFile\(\'[^\']*\',\'([^\']*)\',\'[^\']*\',\'[^\']*\',\'[^\']*\',\'1\',\'[^\']*\'\);', www.contents)
         titles = [] + re.findall('onclick="javascript:playFile\(\'[^\']*\',\'[^\']*\',\'([^\']*)\',\'[^\']*\',\'[^\']*\',\'1\',\'[^\']*\'\);', www.contents)
-        
-        # 2.2. Szukamy w nowy sposób
         links = links + re.findall('"file":"([^"]*)","provider":"audio","uid":"[^"]*","length":[0-9]*,"autostart":[a-z]*,"link":"[^"]*","title":"[^"]*"', www.contents)
         titles = titles + re.findall('"file":"[^"]*","provider":"audio","uid":"[^"]*","length":[0-9]*,"autostart":[a-z]*,"link":"[^"]*","title":"([^"]*)"', www.contents)
 
