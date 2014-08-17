@@ -100,28 +100,20 @@ if len(sys.argv) > 1:
         # 2.2. Szukamy w nowy sposób
         links = links + re.findall('"file":"([^"]*)","provider":"audio","uid":"[^"]*","length":[0-9]*,"autostart":[a-z]*,"link":"[^"]*","title":"[^"]*"', www.contents)
         titles = titles + re.findall('"file":"[^"]*","provider":"audio","uid":"[^"]*","length":[0-9]*,"autostart":[a-z]*,"link":"[^"]*","title":"([^"]*)"', www.contents)
-        
-        print titles
 
         # 2.3. Jeżeli te dwa sposoby nie przyniosły skutku, szukamy raz jeszcze inaczej:
         if(len(links)==0):
             links = re.findall('"file":"([^"]*)"',www.contents)
             titles = re.findall('"title":"([^"]*)"',www.contents)
 
-        print 'Znaleziono:'
-        print str(len(links)) + ' linków'
-        print str(len(titles)) + ' tytułów'
-        Separator()
-        
-        print 'Rozpoczynamy pobieranie:'
+        # 3. Budujemy listę unikalnych linków:
+        do_pobrania = {}
         if(len(links) == len(titles) and len(links) > 0):
             a = 0
             while a < len(links):
                 url = links[a]
-                target_dir = home+'/'
                 if url.find('static.polskieradio.pl') == -1:
                     url = 'http://static.polskieradio.pl/'+url+'.mp3'
-                print "[" + str(a+1) + "/" + str(len(links)) + "] " + url
                 title = titles[a]
                 title = urllib2.unquote(title)
                 title = title.replace('?','')
@@ -135,16 +127,30 @@ if len(sys.argv) > 1:
                 title = title.replace('_-_','-')
                 title = title.replace('_-_','-')
                 title = title.replace('_-_','-')
+                try:
+                    do_pobrania[url]
+                except KeyError:
+                    do_pobrania[url] = title
+                a = a+1
+        print 'Znaleziono: '+ str(len(do_pobrania)) + ' podkastów.'
+
+        # 4. Pobieranie:
+        print 'Rozpoczynamy pobieranie:'
+        Separator()
+        if(len(do_pobrania) > 0):
+            a = 0
+            for url in do_pobrania:
+                title = do_pobrania[url]
+                target_dir = home+'/'
+                file_name = target_dir + title+'.mp3'
                 print 'Tytuł: '+title
                 print 'Link: '+url
-                if(Klawisz(save_all) == 1):
-                    if(title != ''):
-                        file_name = target_dir + title+'.mp3'
-                    else:
-                        file_name = target_dir + links[a]+'.mp3'
-                    try:
-                        u = urllib2.urlopen(url)
-                        if not os.path.isfile(file_name):
+                if(os.path.isfile(file_name)):
+                    print '[!] Plik o tej nazwie istnieje w katalogu docelowym'
+                else:
+                    if(Klawisz(save_all) == 1):
+                        try:
+                            u = urllib2.urlopen(url)
                             f = open(file_name, 'wb')
                             meta = u.info()
                             file_size = int(meta.getheaders("Content-Length")[0])
@@ -162,11 +168,9 @@ if len(sys.argv) > 1:
                                 status = status + chr(8)*(len(status)+1)                
                                 sys.stdout.write(status)
                             f.close()
-                        else:
-                            print '[!] Plik o tej nazwie istnieje w katalogu docelowym'
-                    except urllib2.HTTPError as e:
-                        print(e.code)
-                        print(e.read())
+                        except urllib2.HTTPError as e:
+                            print(e.code)
+                            print(e.read())
                 Separator()
                 a += 1
         Separator('#')
