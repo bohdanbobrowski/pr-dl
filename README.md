@@ -1,7 +1,7 @@
 pr-dl
 =====
 
-Proste pobieranie podkastów z serwisu internetowego Polskiego Radia.
+Proste pobieranie podkastów z serwisu internetowego Polskiego Radia (polskieradio.pl).
 
 Jak użyć:
 ====
