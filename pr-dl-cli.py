@@ -85,18 +85,19 @@ if len(sys.argv) > 1:
         c.setopt(c.REFERER, sys.argv[1])        
         c.setopt(c.COOKIEFILE, '')
         c.perform()
+        html = www.contents
         
         # 2.1. Ładujemy podstrony:        
         # 2.1.1. Analizujemy linki do podstron
         try:
-            tabId =         int(re.search('<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[\s]*([0-9]*),[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*, [a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\)', www.contents).group(1))
-            boxInstanceId = int(re.search('<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([\s]*([0-9]*),[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*, [a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\)', www.contents).group(1))
-            sectionId =     int(re.search('<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[\s]*([0-9]*),[0-9\s]*,[0-9\s]*, [a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\)', www.contents).group(1))
-            categoryId =    int(re.search('<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[\s]*([0-9]*),[0-9\s]*, [a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\)', www.contents).group(1))
-            categoryType =  int(re.search('<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[\s]*([0-9]*), [a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\)', www.contents).group(1))
-            queryString =   str(re.search('<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[\s]*[0-9]*, &quot;&quot;, [0-9]*, &quot;([a-z0-9&;=]*)&quot;', www.contents).group(1)).replace('&amp;','&')
-            tagIndexId =    int(re.search('<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*, &quot;&quot;, ([0-9]*)[a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\)', www.contents).group(1))
-            name = str(re.search('<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[\s]*[0-9]*, &quot;&quot;, [0-9]*, &quot;[a-z0-9&;=]*&quot;, &quot;([a-zA-Z0-9\s]*)', www.contents).group(1))
+            tabId =         int(re.search('<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[\s]*([0-9]*),[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*, [a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\)', html).group(1))
+            boxInstanceId = int(re.search('<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([\s]*([0-9]*),[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*, [a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\)', html).group(1))
+            sectionId =     int(re.search('<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[\s]*([0-9]*),[0-9\s]*,[0-9\s]*, [a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\)', html).group(1))
+            categoryId =    int(re.search('<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[\s]*([0-9]*),[0-9\s]*, [a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\)', html).group(1))
+            categoryType =  int(re.search('<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[\s]*([0-9]*), [a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\)', html).group(1))
+            queryString =   str(re.search('<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[\s]*[0-9]*, &quot;&quot;, [0-9]*, &quot;([a-z0-9&;=]*)&quot;', html).group(1)).replace('&amp;','&')
+            tagIndexId =    int(re.search('<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*, &quot;&quot;, ([0-9]*)[a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\)', html).group(1))
+            name = str(re.search('<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[\s]*[0-9]*, &quot;&quot;, [0-9]*, &quot;[a-z0-9&;=]*&quot;, &quot;([a-zA-Z0-9\s]*)', html).group(1))
             pagerMode = '0'
             openArticlesInParentTemplate = 'True'
             idSectionFromUrl = sectionId
@@ -122,7 +123,7 @@ if len(sys.argv) > 1:
         except (IndexError,AttributeError):
             analizuj_podstrony = 0
 
-        pages = [] + re.findall('<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*, [a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\);" class="">[\s]*([0-9]*)', www.contents)        
+        pages = [] + re.findall('<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*, [a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\);" class="">[\s]*([0-9]*)', html)        
 
         # Niestety ustawiam na 0 by nie tracić czasu na niedziałającą paginację (szczegóły niżej):
         analizuj_podstrony = 0
@@ -200,15 +201,15 @@ if len(sys.argv) > 1:
         c.close()
 
         # 2.2. Szukamy pokastów:
-        links = [] + re.findall('onclick="javascript:playFile\(\'[^\']*\',\'([^\']*)\',\'[^\']*\',\'[^\']*\',\'[^\']*\',\'1\',\'[^\']*\'\);', www.contents)
-        titles = [] + re.findall('onclick="javascript:playFile\(\'[^\']*\',\'[^\']*\',\'([^\']*)\',\'[^\']*\',\'[^\']*\',\'1\',\'[^\']*\'\);', www.contents)
-        links = links + re.findall('"file":"([^"]*)","provider":"audio","uid":"[^"]*","length":[0-9]*,"autostart":[a-z]*,"link":"[^"]*","title":"[^"]*"', www.contents)
-        titles = titles + re.findall('"file":"[^"]*","provider":"audio","uid":"[^"]*","length":[0-9]*,"autostart":[a-z]*,"link":"[^"]*","title":"([^"]*)"', www.contents)
+        links = [] + re.findall('onclick="javascript:playFile\(\'[^\']*\',\'([^\']*)\',\'[^\']*\',\'[^\']*\',\'[^\']*\',\'1\',\'[^\']*\'\);', html)
+        titles = [] + re.findall('onclick="javascript:playFile\(\'[^\']*\',\'[^\']*\',\'([^\']*)\',\'[^\']*\',\'[^\']*\',\'1\',\'[^\']*\'\);', html)
+        links = links + re.findall('"file":"([^"]*)","provider":"audio","uid":"[^"]*","length":[0-9]*,"autostart":[a-z]*,"link":"[^"]*","title":"[^"]*"', html)
+        titles = titles + re.findall('"file":"[^"]*","provider":"audio","uid":"[^"]*","length":[0-9]*,"autostart":[a-z]*,"link":"[^"]*","title":"([^"]*)"', html)
 
         # 2.3. Jeżeli te dwa sposoby nie przyniosły skutku, szukamy raz jeszcze inaczej:
         if(len(links)==0):
-            links = re.findall('"file":"([^"]*)"',www.contents)
-            titles = re.findall('"title":"([^"]*)"',www.contents)
+            links = re.findall('"file":"([^"]*)"',html)
+            titles = re.findall('"title":"([^"]*)"',html)
 
         # 3. Budujemy listę unikalnych linków:
         do_pobrania = {}
@@ -219,6 +220,11 @@ if len(sys.argv) > 1:
                 if url.find('static.polskieradio.pl') == -1:
                     url = 'http://static.polskieradio.pl/'+url+'.mp3'
                 title = titles[a]
+                # Jeżeli tytuł jest pusty szukamy tytułu w źródle raz jeszcze:
+                if title == '':
+                    podcast_id = str(url.replace('http://static.polskieradio.pl/','').replace('.mp3',''))
+                    podcast_title = re.search("playFile\('[0-9]*','"+podcast_id+"','','[0-9]*','[0-9a-zA-Z\/]*\,([^']*)",html).group(1)
+                    title = podcast_title
                 title = urllib2.unquote(title)
                 title = title.replace('?','')
                 title = title.replace('(','')
@@ -227,6 +233,7 @@ if len(sys.argv) > 1:
                 title = title.replace(' ','_')
                 title = title.replace('/','_')
                 title = title.replace('&quot;','')
+                title = title.replace('.mp3','')
                 title = title.replace('"','')
                 title = title.replace('_-_','-')
                 title = title.replace('_-_','-')
