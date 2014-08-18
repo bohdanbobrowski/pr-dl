@@ -61,11 +61,11 @@ def get_resource_path(rel_path):
 
 # Parametry podstawowe:
 if len(sys.argv) > 2:
-    if sys.argv[2] == '-T':
+    if str(sys.argv[2]).upper() == '-T':
         save_all = 1
     else:
         home = sys.argv[2]
-if len(sys.argv) > 3 and sys.argv[3] == '-T':
+if len(sys.argv) > 3 and str(sys.argv[3]).upper() == '-T':
     save_all = 1
 
 if len(sys.argv) > 1:
@@ -119,7 +119,7 @@ if len(sys.argv) > 1:
                 # 'showCategoryForArticle' : "False"
             }
             analizuj_podstrony = 1
-        except IndexError:
+        except (IndexError,AttributeError):
             analizuj_podstrony = 0
 
         pages = [] + re.findall('<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*, [a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\);" class="">[\s]*([0-9]*)', www.contents)        
