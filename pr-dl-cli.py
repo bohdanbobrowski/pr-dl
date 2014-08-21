@@ -10,6 +10,7 @@ import urllib
 import urllib2
 
 home = expanduser("~")
+directory = './'
 save_all = 0
 
 def getin():
@@ -64,7 +65,7 @@ if len(sys.argv) > 2:
     if str(sys.argv[2]).upper() == '-T':
         save_all = 1
     else:
-        home = sys.argv[2]
+        directory = sys.argv[2]
 if len(sys.argv) > 3 and str(sys.argv[3]).upper() == '-T':
     save_all = 1
 
@@ -242,11 +243,13 @@ if len(sys.argv) > 1:
         print 'Rozpoczynamy pobieranie:'
         Separator()
         if(len(do_pobrania) > 0):
-            a = 0
+            a = 1
             for url in do_pobrania:
                 title = do_pobrania[url]
-                target_dir = home+'/'
+                target_dir = directory+'/'
+                target_dir = target_dir.replace('//','/')
                 file_name = target_dir + title+'.mp3'
+                print '[' + str(a) + '/' + str(len(do_pobrania)) + ']'
                 print 'Tytuł: '+title
                 print 'Link: '+url
                 if(os.path.isfile(file_name)):
