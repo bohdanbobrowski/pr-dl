@@ -1,5 +1,8 @@
 #!/usr/bin/env python
-#-*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
+import eyed3
+from eyed3.id3 import ID3_V2_4
+import hashlib
 import json
 import os
 from os.path import expanduser
@@ -204,8 +207,10 @@ if len(sys.argv) > 1:
         # 2.2. Szukamy pokastów:
         links = [] + re.findall('onclick="javascript:playFile\(\'[^\']*\',\'([^\']*)\',\'[^\']*\',\'[^\']*\',\'[^\']*\',\'1\',\'[^\']*\'\);', html)
         titles = [] + re.findall('onclick="javascript:playFile\(\'[^\']*\',\'[^\']*\',\'([^\']*)\',\'[^\']*\',\'[^\']*\',\'1\',\'[^\']*\'\);', html)
+        descriptions = [] + re.findall('onclick="javascript:playFile\(\'[^\']*\',\'[^\']*\',\'([^\']*)\',\'[^\']*\',\'[^\']*\',\'1\',\'[^\']*\'\);', html)
         links = links + re.findall('"file":"([^"]*)","provider":"audio","uid":"[^"]*","length":[0-9]*,"autostart":[a-z]*,"link":"[^"]*","title":"[^"]*"', html)
         titles = titles + re.findall('"file":"[^"]*","provider":"audio","uid":"[^"]*","length":[0-9]*,"autostart":[a-z]*,"link":"[^"]*","title":"([^"]*)"', html)
+        descriptions = descriptions + re.findall('"file":"[^"]*","provider":"audio","uid":"[^"]*","length":[0-9]*,"autostart":[a-z]*,"link":"[^"]*","title":"[^"]*","desc":"([^"]*)"', html)
 
         # 2.3. Jeżeli te dwa sposoby nie przyniosły skutku, szukamy raz jeszcze inaczej:
         if(len(links)==0):
@@ -221,28 +226,36 @@ if len(sys.argv) > 1:
                 if url.find('static.polskieradio.pl') == -1:
                     url = 'http://static.polskieradio.pl/'+url+'.mp3'
                 title = titles[a]
+                description = descriptions[a]
                 # Jeżeli tytuł jest pusty szukamy tytułu w źródle raz jeszcze:
                 if title == '':
                     podcast_id = str(url.replace('http://static.polskieradio.pl/','').replace('.mp3',''))
-                    podcast_title = re.search("playFile\('[0-9]*','"+podcast_id+"','','[0-9]*','[0-9a-zA-Z\/]*\,([^']*)",html).group(1)
-                    title = podcast_title
+                    if re.search("playFile\('[0-9]*','"+podcast_id+"','','[0-9]*','[0-9a-zA-Z\/]*\,([^']*)",html):
+                        podcast_title = re.search("playFile\('[0-9]*','"+podcast_id+"','','[0-9]*','[0-9a-zA-Z\/]*\,([^']*)",html).group(1)
+                        title = podcast_title
+                    else:
+                        title = re.search("<title>([^<^>]*)</title>",html).group(1)
+                        title = title.strip() + " " + podcast_id
                 title = urllib2.unquote(title)
-                title = title.replace('?','')
-                title = title.replace('(','')
-                title = title.replace(')','')
-                title = title.replace(':','_')
-                title = title.replace(' ','_')
-                title = title.replace('/','_')
-                title = title.replace('&quot;','')
-                title = title.replace('.mp3','')
-                title = title.replace('"','')
-                title = title.replace('_-_','-')
-                title = title.replace('_-_','-')
-                title = title.replace('_-_','-')
+                if title.find('.mp3') > -1:
+                    title = urllib2.unquote(description);
+                fname = title
+                title = title.replace('&quot;','"')
+                fname = fname.replace('&quot;','')
+                fname = fname.replace('?','')
+                fname = fname.replace('(','')
+                fname = fname.replace(')','')
+                fname = fname.replace(':','_')
+                fname = fname.replace(' ','_')
+                fname = fname.replace('/','_')
+                fname = fname.replace('"','')
+                fname = fname.replace('_-_','-')
+                fname = fname.replace('_-_','-')
+                fname = fname.replace('_-_','-')
                 try:
                     do_pobrania[url]
                 except KeyError:
-                    do_pobrania[url] = title
+                    do_pobrania[url] = [fname,title]
                 a = a+1
         print 'Znaleziono: '+ str(len(do_pobrania)) + ' podkastów.'
 
@@ -252,13 +265,29 @@ if len(sys.argv) > 1:
         if(len(do_pobrania) > 0):
             a = 1
             for url in do_pobrania:
-                title = do_pobrania[url]
+                url_hash = hashlib.md5()
+                url_hash.update(url)
+                url_hash = str(url_hash.hexdigest()[0:20])
+                fname = do_pobrania[url][0]
+                title = do_pobrania[url][1]
                 target_dir = directory+'/'
                 target_dir = target_dir.replace('//','/')
-                file_name = target_dir + title+'.mp3'
+                if len(fname) > 230 and fname.find('-') > -1:
+                    fname = fname.split('-')
+                    if len(fname) > 1:
+                        fname = fname[0] + '-' + fname[1]
+                        fname = fname + '_' + url_hash
+                    else:
+                        fname = fname[0]
+                        fname = fname + '_' + url_hash
+                if len(fname) > 230:
+                    fname = fname[0:230] + "_"
+                    fname = fname + '_' + url_hash
+                file_name = target_dir + fname  + '.mp3'
                 print '[' + str(a) + '/' + str(len(do_pobrania)) + ']'
-                print 'Tytuł: '+title
-                print 'Link: '+url
+                print 'Tytuł: ' + title
+                print 'Link: ' + url
+                print 'Plik: ' + file_name
                 if(os.path.isfile(file_name)):
                     print '[!] Plik o tej nazwie istnieje w katalogu docelowym'
                 else:
@@ -282,6 +311,16 @@ if len(sys.argv) > 1:
                                 status = status + chr(8)*(len(status)+1)                
                                 sys.stdout.write(status)
                             f.close()
+                            audiofile = eyed3.load(file_name)
+                            if audiofile.tag is None:
+                                audiofile.tag = eyed3.id3.Tag()
+                                audiofile.tag.file_info = eyed3.id3.FileInfo(file_name)
+                            audiofile.tag.comments.set(u"Pobrane przy pomocy skryptu https://github.com/bohdanbobrowski/pr-dl")
+                            audiofile.tag.artist = u"Polskie Radio"
+                            audiofile.tag.album = u"polskieradio.pl"
+                            audiofile.tag.title = unicode(title.decode('utf-8'))
+                            audiofile.tag.track_num = a
+                            audiofile.tag.save(version=ID3_V2_4,encoding='utf-8')
                         except urllib2.HTTPError as e:
                             print(e.code)
                             print(e.read())
