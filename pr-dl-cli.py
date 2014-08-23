@@ -252,6 +252,7 @@ if len(sys.argv) > 1:
                 fname = fname.replace('_-_','-')
                 fname = fname.replace('_-_','-')
                 fname = fname.replace('_-_','-')
+                
                 try:
                     do_pobrania[url]
                 except KeyError:
