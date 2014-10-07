@@ -199,7 +199,7 @@ if len(sys.argv) > 1:
                     "categoryId": 405
                 }
 
-                Podejżewam że coś z ciastkami albo naglowkami jest nie teges.
+                Podejrzewam że coś z ciastkami albo naglowkami jest nie teges.
                 """
 
         c.close()
