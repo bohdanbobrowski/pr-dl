@@ -316,11 +316,17 @@ if len(sys.argv) > 1:
                             if audiofile.tag is None:
                                 audiofile.tag = eyed3.id3.Tag()
                                 audiofile.tag.file_info = eyed3.id3.FileInfo(file_name)
-                            audiofile.tag.comments.set(u"Pobrane przy pomocy skryptu https://github.com/bohdanbobrowski/pr-dl")
+                            comments = u"Adres url: "+unicode(sys.argv[1])+"\n"
+                            comments = comments+u"Url pliku mp3: "+unicode(url)+"\n\n"
+                            audiofile.tag.comments.set(comments+u"Pobrane przy pomocy skryptu https://github.com/bohdanbobrowski/pr-dl")
                             audiofile.tag.artist = u"Polskie Radio"
                             audiofile.tag.album = u"polskieradio.pl"
+                            audiofile.tag.genre = u"Speech"
                             audiofile.tag.title = unicode(title.decode('utf-8'))
+                            audiofile.tag.audio_file_url = url
                             audiofile.tag.track_num = a
+                            # frame = eyed3.id3.frames.ImageFrame.create(eyed3.id3.frames.ImageFrame.FRONT_COVER,'./polskieradio.png')
+                            # print audiofile.tag.frames                            
                             audiofile.tag.save(version=ID3_V2_4,encoding='utf-8')
                         except urllib2.HTTPError as e:
                             print(e.code)
