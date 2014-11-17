@@ -6,11 +6,14 @@ import hashlib
 import json
 import os
 from os.path import expanduser
+from slugify import slugify
 import pycurl
 import re
 import sys
 import urllib
 import urllib2
+import json
+import itertools
 
 home = expanduser("~")
 directory = './'
@@ -62,6 +65,68 @@ def get_resource_path(rel_path):
     rel_path_to_resource = os.path.join(dir_of_py_file, rel_path)
     abs_path_to_resource = os.path.abspath(rel_path_to_resource)
     return abs_path_to_resource
+
+def PobierzPlikDzwiekowy(url,title,current=0,total=0):
+    url_hash = hashlib.md5()
+    url_hash.update(url)
+    url_hash = str(url_hash.hexdigest()[0:20])
+    target_dir = './'
+    # http://www.frazpc.pl/b/280820
+    file_name = title
+    file_name.replace('ł','l')
+    file_name.replace('Ł','L')
+    file_name = slugify(file_name.decode('utf-8'))
+    if len(file_name) > 100:
+        file_name = file_name[0:97] + "..."
+    if len(file_name) == 0:
+        file_name = url_hash + ".mp3"
+    file_name = file_name + ".mp3"
+    print '[' + str(current) + '/' + str(total) + ']'
+    print 'Tytuł: ' + title
+    print 'Link: ' + url
+    print 'Plik: ' + file_name
+    if(os.path.isfile(file_name)):
+        print '[!] Plik o tej nazwie istnieje w katalogu docelowym'
+    else:
+        if(Klawisz(save_all) == 1):
+            try:
+                u = urllib2.urlopen(url)
+                f = open(file_name, 'wb')
+                meta = u.info()
+                file_size = int(meta.getheaders("Content-Length")[0])
+                print("Pobieranie: {0} Rozmiar: {1}".format(url, file_size))            
+                file_size_dl = 0
+                block_sz = 8192
+                while True:
+                    buffer = u.read(block_sz)
+                    if not buffer:
+                        break
+                    file_size_dl += len(buffer)
+                    f.write(buffer)
+                    p = float(file_size_dl) / file_size
+                    status = r"{0}  [{1:.2%}]".format(file_size_dl, p)
+                    status = status + chr(8)*(len(status)+1)                
+                    sys.stdout.write(status)
+                f.close()
+                if(os.path.isfile(file_name)):
+                    audiofile = eyed3.load(file_name)
+                    if audiofile.tag is None:
+                        audiofile.tag = eyed3.id3.Tag()
+                        audiofile.tag.file_info = eyed3.id3.FileInfo(file_name)
+                    comments = u"Url pliku mp3: "+unicode(url)+"\n\n"
+                    audiofile.tag.comments.set(comments+u"Pobrane przy pomocy skryptu https://github.com/bohdanbobrowski/pr-dl")
+                    audiofile.tag.artist = u"Polskie Radio"
+                    audiofile.tag.album = u"polskieradio.pl"
+                    audiofile.tag.genre = u"Speech"
+                    audiofile.tag.title = unicode(title.decode('utf-8'))
+                    audiofile.tag.audio_file_url = url
+                    audiofile.tag.track_num = a
+                    # frame = eyed3.id3.frames.ImageFrame.create(eyed3.id3.frames.ImageFrame.FRONT_COVER,'./polskieradio.png')
+                    # print audiofile.tag.frames                            
+                    audiofile.tag.save(version=ID3_V2_4,encoding='utf-8')
+            except urllib2.HTTPError as e:
+                print(e.code)
+                print(e.read())
 
 # Parametry podstawowe:
 if len(sys.argv) > 2:
@@ -241,6 +306,7 @@ if len(sys.argv) > 1:
                     title = urllib2.unquote(description);
                 fname = title
                 title = title.replace('&quot;','"')
+                title = title.replace('""','"')
                 fname = fname.replace('&quot;','')
                 fname = fname.replace('?','')
                 fname = fname.replace('(','')
@@ -264,11 +330,6 @@ if len(sys.argv) > 1:
         print 'Rozpoczynamy pobieranie:'
         Separator()
         if(len(do_pobrania) > 0):
-            a = 1
-            for url in do_pobrania:
-                url_hash = hashlib.md5()
-                url_hash.update(url)
-                url_hash = str(url_hash.hexdigest()[0:20])
                 fname = do_pobrania[url][0]
                 title = do_pobrania[url][1]
                 target_dir = directory+'/'
@@ -284,7 +345,7 @@ if len(sys.argv) > 1:
                 if len(fname) > 230:
                     fname = fname[0:230] + "_"
                     fname = fname + '_' + url_hash
-                file_name = target_dir + fname  + '.mp3'
+                file_name = fname  + '.mp3'
                 print '[' + str(a) + '/' + str(len(do_pobrania)) + ']'
                 print 'Tytuł: ' + title
                 print 'Link: ' + url
@@ -334,3 +395,34 @@ if len(sys.argv) > 1:
                 Separator()
                 a += 1
         Separator('#')
+
+    else:
+        # Jeżeli nie podano bezpośredniego linku staramy się wyszukać słowo kluczowe
+        search_params = urllib.quote('offset=0&limit=500&query='+sys.argv[1])
+        search_url = 'http://api.polskieradio.pl/netsprint.search?type=radio&params='+search_params        
+        wynik = urllib.urlopen(search_url)
+        wynik = wynik.read()
+        wynik = json.loads(wynik)
+        pliki_dodane = []
+        pliki = []
+        """
+        {u'audiolength': u'970', u'description': u'Proces Melchiora Wa\u0144kowicza - komentarz historyka prof. Rafa\u0142a Habielskiego', u'path': u'http://www.polskieradio.pl/ec8014c5-5307-4306-ac85-91814a353fc8.file', u'type': u'Plik d\u017awi\u0119kowy', u'id': 793279, u'name': u'proces melchiora wa\u0144kowicza.mp3'}
+        """
+        if 'response' in wynik and 'results' in wynik['response'] and len(wynik['response']['results'])>0:
+            Separator('#')
+            # Najpierw szukam w wynikach plików dźwiekowych
+            for w in wynik['response']['results']:
+                if 'files' in w:
+                    for file in w['files']:
+                        if file['name'] not in pliki_dodane and file['type'] == u'Plik dźwiękowy':                            
+                            pliki.append(file)
+            # Zabieram się za Pobieranie
+            a = 1
+            for p in pliki:
+                p['description'] = p['description'].encode('utf-8')
+                if len(p['description']) == 0:
+                    p['description'] = p['name'].replace('.mp3','').encode('utf-8')
+                PobierzPlikDzwiekowy(p['path'],p['description'],a,len(pliki))
+                Separator()
+                a += 1 
+                                
