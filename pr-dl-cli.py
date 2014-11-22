@@ -66,16 +66,13 @@ def get_resource_path(rel_path):
     abs_path_to_resource = os.path.abspath(rel_path_to_resource)
     return abs_path_to_resource
 
-def PobierzPlikDzwiekowy(url,title,current=0,total=0):
+def DownloadPodcastFile(url,title,description='',current=0,total=0):
     url_hash = hashlib.md5()
     url_hash.update(url)
     url_hash = str(url_hash.hexdigest()[0:20])
     target_dir = './'
-    # http://www.frazpc.pl/b/280820
-    file_name = title
-    file_name.replace('ł','l')
-    file_name.replace('Ł','L')
-    file_name = slugify(file_name.decode('utf-8'))
+    # http://www.frazpc.pl/b/280820 - bo z tą literka Ł to jakis wałek
+    file_name = slugify(title.replace('ł','l').replace('Ł','L').decode('utf-8'))
     if len(file_name) > 100:
         file_name = file_name[0:97] + "..."
     if len(file_name) == 0:
@@ -284,117 +281,56 @@ if len(sys.argv) > 1:
             titles = re.findall('"title":"([^"]*)"',html)
 
         # 3. Budujemy listę unikalnych linków:
-        do_pobrania = {}
+        download_list = []
+        added_links = []
         if(len(links) == len(titles) and len(links) > 0):
-            a = 0
-            while a < len(links):
-                url = links[a]
-                if url.find('static.polskieradio.pl') == -1:
-                    url = 'http://static.polskieradio.pl/'+url+'.mp3'
-                title = titles[a]
-                description = descriptions[a]
-                # Jeżeli tytuł jest pusty szukamy tytułu w źródle raz jeszcze:
-                if title == '':
-                    podcast_id = str(url.replace('http://static.polskieradio.pl/','').replace('.mp3',''))
-                    if re.search("playFile\('[0-9]*','"+podcast_id+"','','[0-9]*','[0-9a-zA-Z\/]*\,([^']*)",html):
-                        podcast_title = re.search("playFile\('[0-9]*','"+podcast_id+"','','[0-9]*','[0-9a-zA-Z\/]*\,([^']*)",html).group(1)
-                        title = podcast_title
-                    else:
-                        title = re.search("<title>([^<^>]*)</title>",html).group(1)
-                        title = title.strip() + " " + podcast_id
-                title = urllib2.unquote(title)
-                if title.find('.mp3') > -1:
-                    title = urllib2.unquote(description);
-                fname = title
-                title = title.replace('&quot;','"')
-                title = title.replace('""','"')
-                fname = fname.replace('&quot;','')
-                fname = fname.replace('?','')
-                fname = fname.replace('(','')
-                fname = fname.replace(')','')
-                fname = fname.replace(':','_')
-                fname = fname.replace(' ','_')
-                fname = fname.replace('/','_')
-                fname = fname.replace('"','')
-                fname = fname.replace('_-_','-')
-                fname = fname.replace('_-_','-')
-                fname = fname.replace('_-_','-')
-                
-                try:
-                    do_pobrania[url]
-                except KeyError:
-                    do_pobrania[url] = [fname,title]
-                a = a+1
-        print 'Znaleziono: '+ str(len(do_pobrania)) + ' podkastów.'
+            for (x,y) in enumerate(links):
+                if links[x] not in added_links:
+                    url = links[x]
+                    added_links.append(url)
+                    if url.find('static.polskieradio.pl') == -1:
+                        url = 'http://static.polskieradio.pl/'+url+'.mp3'
+                    title = titles[x]
+                    description = descriptions[x]
+                    # Jeżeli tytuł jest pusty szukamy tytułu w źródle raz jeszcze:
+                    if title == '':
+                        podcast_id = str(url.replace('http://static.polskieradio.pl/','').replace('.mp3',''))
+                        if re.search("playFile\('[0-9]*','"+podcast_id+"','','[0-9]*','[0-9a-zA-Z\/]*\,([^']*)",html):
+                            podcast_title = re.search("playFile\('[0-9]*','"+podcast_id+"','','[0-9]*','[0-9a-zA-Z\/]*\,([^']*)",html).group(1)
+                            title = podcast_title
+                        else:
+                            title = re.search("<title>([^<^>]*)</title>",html).group(1)
+                            title = title.strip() + " " + podcast_id
+                    title = urllib2.unquote(title)
+                    if title.find('.mp3') > -1:
+                        title = urllib2.unquote(description);
+                    fname = title
+                    title = title.replace('&quot;','"')
+                    title = title.replace('""','"')
+                    fname = fname.replace('&quot;','')
+                    fname = fname.replace('?','')
+                    fname = fname.replace('(','')
+                    fname = fname.replace(')','')
+                    fname = fname.replace(':','_')
+                    fname = fname.replace(' ','_')
+                    fname = fname.replace('/','_')
+                    fname = fname.replace('"','')
+                    fname = fname.replace('_-_','-')
+                    fname = fname.replace('_-_','-')
+                    fname = fname.replace('_-_','-')
+                    d_l = {'url':url,'title':title,'description':description,'fname':fname}
+                    download_list.append(d_l)
 
         # 4. Pobieranie:
         print 'Rozpoczynamy pobieranie:'
         Separator()
-        if(len(do_pobrania) > 0):
-                fname = do_pobrania[url][0]
-                title = do_pobrania[url][1]
-                target_dir = directory+'/'
-                target_dir = target_dir.replace('//','/')
-                if len(fname) > 230 and fname.find('-') > -1:
-                    fname = fname.split('-')
-                    if len(fname) > 1:
-                        fname = fname[0] + '-' + fname[1]
-                        fname = fname + '_' + url_hash
-                    else:
-                        fname = fname[0]
-                        fname = fname + '_' + url_hash
-                if len(fname) > 230:
-                    fname = fname[0:230] + "_"
-                    fname = fname + '_' + url_hash
-                file_name = fname  + '.mp3'
-                print '[' + str(a) + '/' + str(len(do_pobrania)) + ']'
-                print 'Tytuł: ' + title
-                print 'Link: ' + url
-                print 'Plik: ' + file_name
-                if(os.path.isfile(file_name)):
-                    print '[!] Plik o tej nazwie istnieje w katalogu docelowym'
-                else:
-                    if(Klawisz(save_all) == 1):
-                        try:
-                            u = urllib2.urlopen(url)
-                            f = open(file_name, 'wb')
-                            meta = u.info()
-                            file_size = int(meta.getheaders("Content-Length")[0])
-                            print("Pobieranie: {0} Rozmiar: {1}".format(url, file_size))            
-                            file_size_dl = 0
-                            block_sz = 8192
-                            while True:
-                                buffer = u.read(block_sz)
-                                if not buffer:
-                                    break
-                                file_size_dl += len(buffer)
-                                f.write(buffer)
-                                p = float(file_size_dl) / file_size
-                                status = r"{0}  [{1:.2%}]".format(file_size_dl, p)
-                                status = status + chr(8)*(len(status)+1)                
-                                sys.stdout.write(status)
-                            f.close()
-                            audiofile = eyed3.load(file_name)
-                            if audiofile.tag is None:
-                                audiofile.tag = eyed3.id3.Tag()
-                                audiofile.tag.file_info = eyed3.id3.FileInfo(file_name)
-                            comments = u"Adres url: "+unicode(sys.argv[1])+"\n"
-                            comments = comments+u"Url pliku mp3: "+unicode(url)+"\n\n"
-                            audiofile.tag.comments.set(comments+u"Pobrane przy pomocy skryptu https://github.com/bohdanbobrowski/pr-dl")
-                            audiofile.tag.artist = u"Polskie Radio"
-                            audiofile.tag.album = u"polskieradio.pl"
-                            audiofile.tag.genre = u"Speech"
-                            audiofile.tag.title = unicode(title.decode('utf-8'))
-                            audiofile.tag.audio_file_url = url
-                            audiofile.tag.track_num = a
-                            # frame = eyed3.id3.frames.ImageFrame.create(eyed3.id3.frames.ImageFrame.FRONT_COVER,'./polskieradio.png')
-                            # print audiofile.tag.frames                            
-                            audiofile.tag.save(version=ID3_V2_4,encoding='utf-8')
-                        except urllib2.HTTPError as e:
-                            print(e.code)
-                            print(e.read())
-                Separator()
-                a += 1
+        a = 1
+        for d in download_list:
+            if len(d['title']) == 0:
+                d['title'] = d['url'].replace('.mp3','')
+            DownloadPodcastFile(d['url'],d['title'],d['description'],a,len(download_list))
+            Separator()
+            a += 1 
         Separator('#')
 
     else:
@@ -423,7 +359,7 @@ if len(sys.argv) > 1:
                 p['description'] = p['description'].encode('utf-8')
                 if len(p['description']) == 0:
                     p['description'] = p['name'].replace('.mp3','').encode('utf-8')
-                PobierzPlikDzwiekowy(p['path'],p['description'],a,len(pliki))
+                DownloadPodcastFile(p['path'],p['description'],'',a,len(pliki))
                 Separator()
                 a += 1 
                                 
