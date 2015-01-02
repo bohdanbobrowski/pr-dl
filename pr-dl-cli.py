@@ -17,7 +17,9 @@ import itertools
 
 home = expanduser("~")
 directory = './'
-save_all = 0
+
+SAVE_ALL = 0
+FORCED_SEARCH = False
 
 def getin():
     if os.name == 'nt':
@@ -85,7 +87,7 @@ def DownloadPodcastFile(url,title,description='',current=0,total=0):
     if(os.path.isfile(file_name)):
         print '[!] Plik o tej nazwie istnieje w katalogu docelowym'
     else:
-        if(Klawisz(save_all) == 1):
+        if(Klawisz(SAVE_ALL) == 1):
             try:
                 u = urllib2.urlopen(url)
                 f = open(file_name, 'wb')
@@ -127,13 +129,10 @@ def DownloadPodcastFile(url,title,description='',current=0,total=0):
                 print(e.read())
 
 # Parametry podstawowe:
-if len(sys.argv) > 2:
-    if str(sys.argv[2]).upper() == '-T':
-        save_all = 1
-    else:
-        directory = sys.argv[2]
-if len(sys.argv) > 3 and str(sys.argv[3]).upper() == '-T':
-    save_all = 1
+if '-t' in sys.argv or '-T' in sys.argv:
+    SAVE_ALL = 1
+if '-f' in sys.argv or '-F' in sys.argv:
+    FORCED_SEARCH = True
 
 if len(sys.argv) > 1:
     if(sys.argv[1].find("http://www.polskieradio.pl")==0):
@@ -353,6 +352,19 @@ if len(sys.argv) > 1:
                     for file in w['files']:
                         if file['name'] not in pliki_dodane and file['type'] == u'Plik dźwiękowy':                            
                             pliki.append(file)
+
+            # "Wzmocnione" szukanie - akceptuj tylko pliki dźwiekowe które w tytule mają szukaną frazę
+            if FORCED_SEARCH:
+                pliki_sprawdzone = []
+                for p in pliki:
+                    p['description'] = p['description']
+                    if len(p['description']) == 0:
+                        p['description'] = p['name'].replace('.mp3','')
+                    print p['description']
+                    if p['description'].upper().find(sys.argv[1].upper()) > -1:
+                        pliki_sprawdzone.append(p)
+                pliki = pliki_sprawdzone
+
             # Zabieram się za Pobieranie
             a = 1
             for p in pliki:
