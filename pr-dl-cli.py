@@ -287,7 +287,7 @@ if len(sys.argv) > 1:
                 if links[x] not in added_links:
                     url = links[x]
                     added_links.append(url)
-                    if url.find('static.polskieradio.pl') == -1:
+                    if url.find('http://static') == -1:
                         url = 'http://static.polskieradio.pl/'+url+'.mp3'
                     title = titles[x]
                     description = descriptions[x]
