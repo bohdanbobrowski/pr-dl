@@ -3,7 +3,6 @@
 import eyed3
 from eyed3.id3 import ID3_V2_4
 import hashlib
-import json
 import os
 from os.path import expanduser
 from slugify import slugify
@@ -14,6 +13,7 @@ import urllib
 import urllib2
 import json
 import itertools
+from clint.textui import puts, colored
 
 home = expanduser("~")
 directory = './'
@@ -46,7 +46,7 @@ def Klawisz(answer):
     if(answer == 1):
         return 1
     else:
-        print "Czy zapisać podcast? ([t]ak / [n]ie / [z]akoncz)"
+        puts(colored.red("Czy zapisać podcast? ([t]ak / [n]ie / [z]akoncz)"))
         key = getin()
         if key == 'z' or key == 'Z':
             Separator('#')
@@ -80,10 +80,10 @@ def DownloadPodcastFile(url,title,description='',current=0,total=0):
     if len(file_name) == 0:
         file_name = url_hash + ".mp3"
     file_name = file_name + ".mp3"
-    print '[' + str(current) + '/' + str(total) + ']'
-    print 'Tytuł: ' + title
-    print 'Link: ' + url
-    print 'Plik: ' + file_name
+    puts(colored.blue( '[' + str(current) + '/' + str(total) + ']'))
+    puts(colored.white('Tytuł: ' + title,bold=True))
+    puts(colored.white('Link: ' + url))
+    puts(colored.white('Plik: ' + file_name))
     if(os.path.isfile(file_name)):
         print '[!] Plik o tej nazwie istnieje w katalogu docelowym'
     else:
@@ -327,6 +327,7 @@ if len(sys.argv) > 1:
         for d in download_list:
             if len(d['title']) == 0:
                 d['title'] = d['url'].replace('.mp3','')
+            d['url'] = d['url'].replace('.mp3.mp3','.mp3')
             DownloadPodcastFile(d['url'],d['title'],d['description'],a,len(download_list))
             Separator()
             a += 1 
@@ -371,6 +372,7 @@ if len(sys.argv) > 1:
                 p['description'] = p['description'].encode('utf-8')
                 if len(p['description']) == 0:
                     p['description'] = p['name'].replace('.mp3','').encode('utf-8')
+                p['path'] = p['path'].replace('.mp3.mp3','.mp3')
                 DownloadPodcastFile(p['path'],p['description'],'',a,len(pliki))
                 Separator()
                 a += 1 
