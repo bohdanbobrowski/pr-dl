@@ -388,16 +388,12 @@ if len(sys.argv) > 1:
 
     else:
         # Jeżeli nie podano bezpośredniego linku staramy się wyszukać słowo kluczowe
-        search_params = urllib.quote('offset=0&limit=500&query='+sys.argv[1])
-        search_url = 'http://api.polskieradio.pl/netsprint.search?type=radio&params='+search_params        
+        search_url = 'http://apipr.polskieradio.pl/api/elasticArticles?sort_by=date&sort_order=desc&offset=0&limit=500&query='+urllib.quote(sys.argv[1])
         wynik = urllib.urlopen(search_url)
-        wynik = wynik.read()
+        wynik = wynik.read()        
         wynik = json.loads(wynik)
         pliki_dodane = []
         pliki = []
-        """
-        {u'audiolength': u'970', u'description': u'Proces Melchiora Wa\u0144kowicza - komentarz historyka prof. Rafa\u0142a Habielskiego', u'path': u'http://www.polskieradio.pl/ec8014c5-5307-4306-ac85-91814a353fc8.file', u'type': u'Plik d\u017awi\u0119kowy', u'id': 793279, u'name': u'proces melchiora wa\u0144kowicza.mp3'}
-        """
         if 'response' in wynik and 'results' in wynik['response'] and len(wynik['response']['results'])>0:
             Separator('#')
             # Najpierw szukam w wynikach plików dźwiekowych
