@@ -68,7 +68,8 @@ def get_resource_path(rel_path):
     abs_path_to_resource = os.path.abspath(rel_path_to_resource)
     return abs_path_to_resource
 
-def DownloadPodcastFile(url,title,description='',current=0,total=0):
+def DownloadPodcastFile(url,title,description='',current=0,total=0):    
+    print url
     url_hash = hashlib.md5()
     url_hash.update(url)
     url_hash = str(url_hash.hexdigest()[0:20])
@@ -287,6 +288,8 @@ if len(sys.argv) > 1:
                 if links[x] not in added_links:
                     url = links[x]
                     added_links.append(url)
+                    if url.find('//static') > -1 and url.find('http://') == -1:
+                        url = 'http:'+url
                     if url.find('http://static') == -1:
                         url = 'http://static.polskieradio.pl/'+url+'.mp3'
                     title = titles[x]
