@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
 import eyed3
 from eyed3.id3 import ID3_V2_4
+from mutagen.mp3 import MP3
+from mutagen.id3 import ID3, APIC, error
 import hashlib
-import json
 import os
 from os.path import expanduser
 from slugify import slugify
@@ -14,6 +16,8 @@ import urllib
 import urllib2
 import json
 import itertools
+from clint.textui import puts, colored
+from PIL import Image, ImageChops
 
 home = expanduser("~")
 directory = './'
@@ -46,7 +50,7 @@ def Klawisz(answer):
     if(answer == 1):
         return 1
     else:
-        print "Czy zapisać podcast? ([t]ak / [n]ie / [z]akoncz)"
+        puts(colored.red("Czy zapisać podcast? ([t]ak / [n]ie / [z]akoncz)"))
         key = getin()
         if key == 'z' or key == 'Z':
             Separator('#')
@@ -68,8 +72,7 @@ def get_resource_path(rel_path):
     abs_path_to_resource = os.path.abspath(rel_path_to_resource)
     return abs_path_to_resource
 
-def DownloadPodcastFile(url,title,description='',current=0,total=0):    
-    print url
+def DownloadPodcastFile(url,title,description='',current=0,total=0,thumb=""):
     url_hash = hashlib.md5()
     url_hash.update(url)
     url_hash = str(url_hash.hexdigest()[0:20])
@@ -81,10 +84,12 @@ def DownloadPodcastFile(url,title,description='',current=0,total=0):
     if len(file_name) == 0:
         file_name = url_hash + ".mp3"
     file_name = file_name + ".mp3"
-    print '[' + str(current) + '/' + str(total) + ']'
-    print 'Tytuł: ' + title
-    print 'Link: ' + url
-    print 'Plik: ' + file_name
+    puts(colored.blue( '[' + str(current) + '/' + str(total) + ']'))
+    puts(colored.white('Tytuł: ' + title,bold=True))
+    puts(colored.white('Link: ' + url))
+    puts(colored.white('Plik: ' + file_name))
+    if thumb != "":
+        puts(colored.white('Miniaturka: ' + thumb))
     if(os.path.isfile(file_name)):
         print '[!] Plik o tej nazwie istnieje w katalogu docelowym'
     else:
@@ -122,9 +127,49 @@ def DownloadPodcastFile(url,title,description='',current=0,total=0):
                         audiofile.tag.title = unicode(title.decode('utf-8'))
                         audiofile.tag.audio_file_url = url
                         audiofile.tag.track_num = a
-                        audiofile.tag.save(version=ID3_V2_4,encoding='utf-8')
+                        audiofile.tag.save(version=ID3_V2_4,encoding='utf-8') 
                     except:
                         print 'Nie udalo się otagować pliku mp3...'
+                    if thumb != "":
+                        if(os.path.isfile('thumb.jpg')):
+                            os.remove('thumb.jpg')
+                        urllib.urlretrieve(thumb,'thumb.jpg')
+                        image = Image.open('thumb.jpg')
+                        image = image.crop((82,0,282,200))                        
+                        image.save('thumb.jpg')
+                        audio = MP3(file_name, ID3=ID3)
+                        try:
+                            audio.add_tags()
+                        except error:
+                            pass
+                        audio.tags.add(
+                            APIC(
+                                encoding=3,
+                                mime='image/jpeg',
+                                type=3,
+                                desc=u'Cover',
+                                data=open('thumb.jpg').read()
+                            )
+                        )
+                        audio.save()
+                        if(os.path.isfile('thumb.jpg')):
+                            os.remove('thumb.jpg')
+                    else:
+                        audio = MP3(file_name, ID3=ID3)
+                        try:
+                            audio.add_tags()
+                        except error:
+                            pass
+                        audio.tags.add(
+                            APIC(
+                                encoding=3,
+                                mime='image/png',
+                                type=3,
+                                desc=u'Cover',
+                                data=open(os.path.realpath(__file__).replace('pr-dl-cli.py','polskieradio_logo_cover.png')).read()
+                            )
+                        )
+                        audio.save()
             except urllib2.HTTPError as e:
                 print(e.code)
                 print(e.read())
@@ -267,13 +312,14 @@ if len(sys.argv) > 1:
 
         c.close()
 
-        # 2.2. Szukamy pokastów:
+        # 2.2. Szukamy podkastów:
         links = [] + re.findall('onclick="javascript:playFile\(\'[^\']*\',\'([^\']*)\',\'[^\']*\',\'[^\']*\',\'[^\']*\',\'1\',\'[^\']*\'\);', html)
         titles = [] + re.findall('onclick="javascript:playFile\(\'[^\']*\',\'[^\']*\',\'([^\']*)\',\'[^\']*\',\'[^\']*\',\'1\',\'[^\']*\'\);', html)
         descriptions = [] + re.findall('onclick="javascript:playFile\(\'[^\']*\',\'[^\']*\',\'([^\']*)\',\'[^\']*\',\'[^\']*\',\'1\',\'[^\']*\'\);', html)
         links = links + re.findall('"file":"([^"]*)","provider":"audio","uid":"[^"]*","length":[0-9]*,"autostart":[a-z]*,"link":"[^"]*","title":"[^"]*"', html)
         titles = titles + re.findall('"file":"[^"]*","provider":"audio","uid":"[^"]*","length":[0-9]*,"autostart":[a-z]*,"link":"[^"]*","title":"([^"]*)"', html)
         descriptions = descriptions + re.findall('"file":"[^"]*","provider":"audio","uid":"[^"]*","length":[0-9]*,"autostart":[a-z]*,"link":"[^"]*","title":"[^"]*","desc":"([^"]*)"', html)
+        thumbs = []
 
         # 2.3. Jeżeli te dwa sposoby nie przyniosły skutku, szukamy raz jeszcze inaczej:
         if(len(links)==0):
@@ -306,6 +352,13 @@ if len(sys.argv) > 1:
                     title = urllib2.unquote(title)
                     if title.find('.mp3') > -1:
                         title = urllib2.unquote(description);
+                    regex = '<img alt="'+title+'" height="[^"]*" src="([^"]*)" width="[^"]*"'
+                    thumb = re.findall(regex,html)
+                    if len(thumb) == 1:
+                        thumb = 'http:'+thumb[0]
+                        thumb = re.sub('\?format=[0-9x]*', '?format=364', thumb)
+                    else:
+                        thumb = ""
                     fname = title
                     title = title.replace('&quot;','"')
                     title = title.replace('""','"')
@@ -320,9 +373,8 @@ if len(sys.argv) > 1:
                     fname = fname.replace('_-_','-')
                     fname = fname.replace('_-_','-')
                     fname = fname.replace('_-_','-')
-                    d_l = {'url':url,'title':title,'description':description,'fname':fname}
+                    d_l = {'url':url,'title':title,'description':description,'fname':fname,'thumb':thumb}
                     download_list.append(d_l)
-
         # 4. Pobieranie:
         print 'Rozpoczynamy pobieranie:'
         Separator()
@@ -330,23 +382,20 @@ if len(sys.argv) > 1:
         for d in download_list:
             if len(d['title']) == 0:
                 d['title'] = d['url'].replace('.mp3','')
-            DownloadPodcastFile(d['url'],d['title'],d['description'],a,len(download_list))
+            d['url'] = d['url'].replace('.mp3.mp3','.mp3')
+            DownloadPodcastFile(d['url'],d['title'],d['description'],a,len(download_list),d['thumb'])
             Separator()
             a += 1 
         Separator('#')
 
     else:
         # Jeżeli nie podano bezpośredniego linku staramy się wyszukać słowo kluczowe
-        search_params = urllib.quote('offset=0&limit=500&query='+sys.argv[1])
-        search_url = 'http://api.polskieradio.pl/netsprint.search?type=radio&params='+search_params        
+        search_url = 'http://apipr.polskieradio.pl/api/elasticArticles?sort_by=date&sort_order=desc&offset=0&limit=500&query='+urllib.quote(sys.argv[1])
         wynik = urllib.urlopen(search_url)
-        wynik = wynik.read()
+        wynik = wynik.read()        
         wynik = json.loads(wynik)
         pliki_dodane = []
         pliki = []
-        """
-        {u'audiolength': u'970', u'description': u'Proces Melchiora Wa\u0144kowicza - komentarz historyka prof. Rafa\u0142a Habielskiego', u'path': u'http://www.polskieradio.pl/ec8014c5-5307-4306-ac85-91814a353fc8.file', u'type': u'Plik d\u017awi\u0119kowy', u'id': 793279, u'name': u'proces melchiora wa\u0144kowicza.mp3'}
-        """
         if 'response' in wynik and 'results' in wynik['response'] and len(wynik['response']['results'])>0:
             Separator('#')
             # Najpierw szukam w wynikach plików dźwiekowych
@@ -374,6 +423,7 @@ if len(sys.argv) > 1:
                 p['description'] = p['description'].encode('utf-8')
                 if len(p['description']) == 0:
                     p['description'] = p['name'].replace('.mp3','').encode('utf-8')
+                p['path'] = p['path'].replace('.mp3.mp3','.mp3')
                 DownloadPodcastFile(p['path'],p['description'],'',a,len(pliki))
                 Separator()
                 a += 1 
