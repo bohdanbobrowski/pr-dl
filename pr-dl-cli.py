@@ -181,8 +181,7 @@ if '-f' in sys.argv or '-F' in sys.argv:
     FORCED_SEARCH = True
 
 if len(sys.argv) > 1:
-    if(sys.argv[1].find("http://www.polskieradio.pl")==0):
-
+    if(sys.argv[1].find("https://www.polskieradio.pl")==0 or sys.argv[1].find("http://www.polskieradio.pl")==0):
         Separator('#')
         print "Analizowany url: "+sys.argv[1]
         www = PobierzStrone()
