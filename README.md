@@ -6,7 +6,7 @@ Proste pobieranie podkastów z serwisu internetowego Polskiego Radia (polskierad
 Jak użyć:
 ====
 
-python pr-dl-cli.pl [url] [-t]
+```python pr-dl-cli.pl [url] [-t]```
 
 W miejsce parametru url wklejamy link do strony w serwisie Polskiego Radia, lub słowo lub frazę jaką chcemy wyszukać.
 
@@ -16,16 +16,16 @@ Przykład:
 ====
 
 Aby pobrać wszystkie podkasty z pierwszej strony "Klubu Ludzi Ciekawych Wszystkiego" wpisujemy:
-python pr-dl-cli.py https://www.polskieradio.pl/8/Audycja/7298 -t
+```python pr-dl-cli.py https://www.polskieradio.pl/8/Audycja/7298 -t```
 
 "Klub Trójki" pobieramy tak:
-python pr-dl-cli.py https://www.polskieradio.pl/9/Audycja/7422 -t
+```python pr-dl-cli.py https://www.polskieradio.pl/9/Audycja/7422 -t```
 
 Aby wyszukać słowo lub frazę w wyszukiwarce Polskiego Radia skrypt odpalamy tak:
-python pr-dl-cli.py Wańkowicz
+```python pr-dl-cli.py Wańkowicz```
 
 lub z -f na końcu dla szukania w tytułach:
-python pr-dl-cli.py Sergiusz\ Piasecki -f
+```python pr-dl-cli.py Sergiusz\ Piasecki -f```
 
 Niedoskonałości:
 ====
