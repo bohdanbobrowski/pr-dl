@@ -390,6 +390,7 @@ if len(sys.argv) > 1:
     else:
         # Jeżeli nie podano bezpośredniego linku staramy się wyszukać słowo kluczowe
         search_url = 'http://apipr.polskieradio.pl/api/elasticArticles?sort_by=date&sort_order=desc&offset=0&limit=500&query='+urllib.quote(sys.argv[1])
+        search_str = unicode(sys.argv[1].decode('utf-8').upper())
         wynik = urllib.urlopen(search_url)
         wynik = wynik.read()        
         wynik = json.loads(wynik)
@@ -411,8 +412,8 @@ if len(sys.argv) > 1:
                     p['description'] = p['description']
                     if len(p['description']) == 0:
                         p['description'] = p['name'].replace('.mp3','')
-                    print p['description']
-                    if p['description'].upper().find(sys.argv[1].upper()) > -1:
+                    description = unicode(p['description'].upper())
+                    if description.find(search_str) > -1:
                         pliki_sprawdzone.append(p)
                 pliki = pliki_sprawdzone
 
