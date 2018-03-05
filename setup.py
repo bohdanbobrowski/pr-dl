@@ -8,13 +8,13 @@ setup(
     name='pr-dl',
     version='0.1',
     description="Polish Radio Downloader",
-    url="https://github.com/bohdanbobrowski/pr-dl",
+    url="https://github.com/bohdanbobrowski/prdl",
     author="Bohdan Bobrowski",
     author_email="bohdanbobrowski@gmail.com",
     license="MIT",
-    packages=["pr-dl"],
+    packages=["prdl"],
     install_requires=["eyed3", "mutagen", "slugify", "pycurl", "PIL", "clint"],
     entry_points={
-        'console_scripts': ['prdl=pr-dl.pr-dl-cli:main'],
+        'console_scripts': ['prdl=prdl.prdl:main'],
     },
 )
