@@ -13,8 +13,10 @@ setup(
     author_email="bohdanbobrowski@gmail.com",
     license="MIT",
     packages=["prdl"],
-    install_requires=["eyed3", "mutagen", "slugify", "pycurl", "PIL", "clint"],
+    install_requires=["eyed3", "mutagen", "slugify", "pycurl", "pillow", "clint"],
     entry_points={
-        'console_scripts': ['prdl=prdl.prdl:main'],
+        'console_scripts': [
+            'prdl = prdl.prdlcli:main'
+        ],
     },
 )
