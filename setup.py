@@ -6,14 +6,23 @@ from setuptools import setup
 
 setup(
     name='pr-dl',
-    version='0.1',
+    version='0.2',
     description="Polish Radio Downloader",
-    url="https://github.com/bohdanbobrowski/prdl",
+    url="https://github.com/bohdanbobrowski/pr-dl",
     author="Bohdan Bobrowski",
     author_email="bohdanbobrowski@gmail.com",
     license="MIT",
-    packages=["prdl"],
-    install_requires=["eyed3", "mutagen", "slugify", "pycurl", "pillow", "clint"],
+    packages=[
+        "prdl"
+    ],
+    install_requires=[
+        "eyed3",
+        "mutagen",
+        "slugify",
+        "pycurl",
+        "pillow",
+        "clint"
+    ],
     entry_points={
         'console_scripts': [
             'prdl = prdl.prdlcli:main'

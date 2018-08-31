@@ -24,12 +24,11 @@ directory = './'
 
 class PrDl:
 
-    def __init__(self, url):
-        super(PrDl, self).__init__()
+    def __init__(self):
         self.SAVE_ALL = 0
         self.FORCED_SEARCH = False
 
-    def getin():
+    def getKey(self):
         if os.name == 'nt':
             from msvcrt import getch
             ch = getch()
@@ -42,7 +41,7 @@ class PrDl:
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         return ch
 
-    def Separator(sign='-'):
+    def drawSeparator(self, sign='-'):
         rows, columns = os.popen('stty size', 'r').read().split()
         columns = int(columns)
         separator = ''
@@ -51,27 +50,29 @@ class PrDl:
         print
         separator
 
-    def Klawisz(answer):
+    def confirmSave(self, answer):
         if (answer == 1):
             return 1
         else:
             puts(colored.red("Czy zapisać podcast? ([t]ak / [n]ie / [z]akoncz)"))
-            key = self.getin()
+            key = self.getKey()
             if key == 'z' or key == 'Z':
-                self.Separator('#')
+                self.drawSeparator('#')
                 exit()
             if key == 't' or key == 'T':
                 return 1
             else:
                 return 0
 
-    def get_resource_path(rel_path):
+    def get_resource_path(self, rel_path):
         dir_of_py_file = os.path.dirname(__file__)
         rel_path_to_resource = os.path.join(dir_of_py_file, rel_path)
         abs_path_to_resource = os.path.abspath(rel_path_to_resource)
         return abs_path_to_resource
 
-    def DownloadPodcastFile(url, title, description='', current=0, total=0, thumb=""):
+    def tagPodcastFile(self, title, description=''):
+
+    def downloadPodcastFile(self, url, title, description='', current=0, total=0, thumb=""):
         url_hash = hashlib.md5()
         url_hash.update(url)
         url_hash = str(url_hash.hexdigest()[0:20])
@@ -93,7 +94,7 @@ class PrDl:
             print
             '[!] Plik o tej nazwie istnieje w katalogu docelowym'
         else:
-            if (Klawisz(SAVE_ALL) == 1):
+            if (confirmSave(SAVE_ALL) == 1):
                 try:
                     u = urllib2.urlopen(url)
                     f = open(file_name, 'wb')
@@ -187,7 +188,7 @@ class PrDl:
         if len(sys.argv) > 1:
             if (sys.argv[1].find("https://www.polskieradio.pl") == 0 or sys.argv[1].find(
                     "http://www.polskieradio.pl") == 0):
-                Separator('#')
+                drawSeparator('#')
                 print
                 "Analizowany url: " + sys.argv[1]
                 www = PobierzStrone()
@@ -428,16 +429,16 @@ class PrDl:
                 # 4. Pobieranie:
                 print
                 'Rozpoczynamy pobieranie:'
-                Separator()
+                drawSeparator()
                 a = 1
                 for d in download_list:
                     if len(d['title']) == 0:
                         d['title'] = d['url'].replace('.mp3', '')
                     d['url'] = d['url'].replace('.mp3.mp3', '.mp3')
-                    self.DownloadPodcastFile(d['url'], d['title'], d['description'], a, len(download_list), d['thumb'])
-                    Separator()
+                    self.downloadPodcastFile(d['url'], d['title'], d['description'], a, len(download_list), d['thumb'])
+                    drawSeparator()
                     a += 1
-                Separator('#')
+                drawSeparator('#')
 
             else:
                 # Jeżeli nie podano bezpośredniego linku staramy się wyszukać słowo kluczowe
@@ -450,7 +451,7 @@ class PrDl:
                 pliki_dodane = []
                 pliki = []
                 if 'response' in wynik and 'results' in wynik['response'] and len(wynik['response']['results']) > 0:
-                    Separator('#')
+                    drawSeparator('#')
                     # Najpierw szukam w wynikach plików dźwiekowych
                     for w in wynik['response']['results']:
                         if 'files' in w:
@@ -477,8 +478,8 @@ class PrDl:
                         if len(p['description']) == 0:
                             p['description'] = p['name'].replace('.mp3', '').encode('utf-8')
                         p['path'] = p['path'].replace('.mp3.mp3', '.mp3')
-                        self.DownloadPodcastFile(p['path'], p['description'], '', a, len(pliki))
-                        Separator()
+                        self.downloadPodcastFile(p['path'], p['description'], '', a, len(pliki))
+                        drawSeparator()
                         a += 1
 
 

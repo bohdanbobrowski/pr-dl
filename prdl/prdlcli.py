@@ -1,4 +1,4 @@
-from prdl.prdl import PrDl
+from prdl import PrDl
 
 def main():
     prdl = PrDl()
