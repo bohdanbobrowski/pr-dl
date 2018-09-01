@@ -6,6 +6,8 @@ Proste pobieranie podkastów z serwisu internetowego Polskiego Radia (polskierad
 Instalacja:
 ====
 
+    pip install git+https://github.com/bohdanbobrowski/pr-dl
+
 Jak użyć:
 ====
 
