@@ -195,7 +195,7 @@ class PrDl(object):
                 podcast.addThumbnail()
 
     def getWebPageContent(self, url):
-        www = self.PageDownloader()
+        www = PageDownloader()
         c = pycurl.Curl()
         c.setopt(c.URL, sys.argv[1])
         c.setopt(c.WRITEFUNCTION, www.body_callback)
@@ -257,7 +257,7 @@ class PrDlSearch(PrDl):
                 self.drawSeparator()
                 a += 1
 
-class PrDlCrawl(object):
+class PrDlCrawl(PrDl):
     def __init__(self, url, save_all = False):
         self.url =  url
         self.save_all = save_all
