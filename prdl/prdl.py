@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import eyed3
 from eyed3.id3 import ID3_V2_4
 from mutagen.mp3 import MP3
 from mutagen.id3 import ID3, APIC, error
 import hashlib
 import os
-from os.path import expanduser
 from slugify import slugify
 import pycurl
 import re
@@ -14,20 +14,129 @@ import sys
 import urllib
 import urllib2
 import json
-import itertools
+import traceback
 from clint.textui import puts, colored
-from PIL import Image, ImageChops
-
-home = expanduser("~")
-directory = './'
+from PIL import Image
 
 
-class PrDl:
+class PrDlPodcast(object):
+    def __init__(self, url, title, description='', track_number = 0, thumbnail_url=False):
+        self.url = url
+        self.title = title
+        self.url_hash = self.getUrlHash()
+        self.description = description
+        self.file_name = self.getFileName()
+        self.file_size = 0
+        self.thumbnail_url = thumbnail_url
+        self.thumbnail_delete_after = False
+        self.setThumbnailFileName()
+        self.track_number = track_number
 
-    def __init__(self):
-        self.SAVE_ALL = 0
-        self.FORCED_SEARCH = False
 
+    def getUrlHash(self):
+        url_hash = hashlib.md5()
+        url_hash.update(self.url)
+        return str(url_hash.hexdigest()[0:20])
+
+    def getFileName(self):
+        file_name = slugify(self.title.replace('ł', 'l').replace('Ł', 'L').decode('utf-8'))
+        if len(file_name) > 100:
+            file_name = file_name[0:97] + "..."
+        if len(file_name) == 0:
+            file_name = self.url_hash + ".mp3"
+        file_name = file_name + ".mp3"
+        return file_name
+
+    def setThumbnailFileName(self):
+        if self.thumbnail_url:
+            expr = self.thumbnail_url.split(".")[-1]
+            self.thumbnail_mime = 'image/jpeg'
+            self.thumbnail_delete_after = True
+            self.thumbnail_file_name = self.url_hash + "." + expr
+        else:
+            self.thumbnail_mime = 'image/png'
+            self.thumbnail_file_name = os.path.realpath(__file__).replace('prdl-cli.py', 'polskieradio_logo_cover.png')
+
+    def downloadThumbnail(self):
+        if (os.path.isfile(self.thumbnail_file_name)):
+            os.remove(self.thumbnail_file_name)
+        urllib.urlretrieve(self.thumbnail_url, self.thumbnail_file_name)
+        image = Image.open(self.thumbnail_file_name)
+        image = image.crop((82, 0, 282, 200))
+        image.save(self.thumbnail_file_name)
+
+    def addThumbnail(self):
+        if (os.path.isfile(self.file_name)):
+            audio = MP3(self.file_name, ID3=ID3)
+            try:
+                audio.add_tags()
+            except error:
+                pass
+            if (os.path.isfile(self.thumbnail_file_name)):
+                audio.tags.add(
+                    APIC(
+                        encoding=3,
+                        mime=self.thumbnail_mime,
+                        type=3,
+                        desc=u'Cover',
+                        data=open(self.thumbnail_file_name).read()
+                    )
+                )
+                audio.save()
+                if self.thumbnail_delete_after:
+                    os.remove(self.thumbnail_file_name)
+
+    def download(self):
+        try:
+            remote = urllib2.urlopen(self.url)
+            file = open(self.file_name, 'wb')
+            meta = remote.info()
+            self.file_size = int(meta.getheaders("Content-Length")[0])
+            print("Pobieranie: {0} Rozmiar: {1}".format(self.url, self.file_size))
+            file_size_dl = 0
+            block_sz = 8192
+            while True:
+                buffer = remote.read(block_sz)
+                if not buffer:
+                    break
+                file_size_dl += len(buffer)
+                file.write(buffer)
+                p = float(file_size_dl) / self.file_size
+                status = r"{0}  [{1:.2%}]".format(file_size_dl, p)
+                status = status + chr(8) * (len(status) + 1)
+                sys.stdout.write(status)
+            file.close()
+            return True
+        except urllib2.HTTPError as error:
+            print(error.code)
+            print(error.read())
+            return False
+
+    def id3tag(self):
+        if (os.path.isfile(self.file_name)):
+            try:
+                audiofile = eyed3.load(self.file_name)
+                if audiofile.tag is None:
+                    audiofile.tag = eyed3.id3.Tag()
+                    audiofile.tag.file_info = eyed3.id3.FileInfo(self.file_name)
+                comments = self.description +"\n\n"
+                comments += u"Url pliku mp3: " + unicode(self.url) + "\n\n"
+                audiofile.tag.comments.set(
+                    comments + u"Pobrane przy pomocy skryptu https://github.com/bohdanbobrowski/pr-dl")
+                audiofile.tag.artist = u"Polskie Radio"
+                audiofile.tag.album = u"polskieradio.pl"
+                audiofile.tag.genre = u"Speech"
+                audiofile.tag.title = unicode(self.title.decode('utf-8'))
+                audiofile.tag.audio_file_url = self.url
+                audiofile.tag.track_num = self.track_number
+                audiofile.tag.save(version=ID3_V2_4, encoding='utf-8')
+            except Exception as error:
+                print 'Nie udalo się otagować pliku mp3...'
+                print error
+            traceback.print_exc()
+
+
+class PrDl(object):
     def getKey(self):
         if os.name == 'nt':
             from msvcrt import getch
@@ -47,8 +156,7 @@ class PrDl:
         separator = ''
         for x in range(0, columns):
             separator = separator + sign
-        print
-        separator
+        print separator
 
     def confirmSave(self, answer):
         if (answer == 1):
@@ -70,420 +178,217 @@ class PrDl:
         abs_path_to_resource = os.path.abspath(rel_path_to_resource)
         return abs_path_to_resource
 
-    def tagPodcastFile(self, title, description=''):
-
     def downloadPodcastFile(self, url, title, description='', current=0, total=0, thumb=""):
-        url_hash = hashlib.md5()
-        url_hash.update(url)
-        url_hash = str(url_hash.hexdigest()[0:20])
-        target_dir = './'
-        # http://www.frazpc.pl/b/280820 - bo z tą literka Ł to jakis wałek
-        file_name = slugify(title.replace('ł', 'l').replace('Ł', 'L').decode('utf-8'))
-        if len(file_name) > 100:
-            file_name = file_name[0:97] + "..."
-        if len(file_name) == 0:
-            file_name = url_hash + ".mp3"
-        file_name = file_name + ".mp3"
+        podcast = PrDlPodcast(url, title, description='', track_number=current, thumbnail_url=thumb)
         puts(colored.blue('[' + str(current) + '/' + str(total) + ']'))
         puts(colored.white('Tytuł: ' + title, bold=True))
         puts(colored.white('Link: ' + url))
-        puts(colored.white('Plik: ' + file_name))
+        puts(colored.white('Plik: ' + podcast.file_name))
         if thumb != "":
             puts(colored.white('Miniaturka: ' + thumb))
-        if (os.path.isfile(file_name)):
-            print
-            '[!] Plik o tej nazwie istnieje w katalogu docelowym'
+        if (os.path.isfile(podcast.file_name)):
+            print '[!] Plik o tej nazwie istnieje w katalogu docelowym'
         else:
-            if (confirmSave(SAVE_ALL) == 1):
-                try:
-                    u = urllib2.urlopen(url)
-                    f = open(file_name, 'wb')
-                    meta = u.info()
-                    file_size = int(meta.getheaders("Content-Length")[0])
-                    print("Pobieranie: {0} Rozmiar: {1}".format(url, file_size))
-                    file_size_dl = 0
-                    block_sz = 8192
-                    while True:
-                        buffer = u.read(block_sz)
-                        if not buffer:
-                            break
-                        file_size_dl += len(buffer)
-                        f.write(buffer)
-                        p = float(file_size_dl) / file_size
-                        status = r"{0}  [{1:.2%}]".format(file_size_dl, p)
-                        status = status + chr(8) * (len(status) + 1)
-                        sys.stdout.write(status)
-                    f.close()
-                    if (os.path.isfile(file_name)):
-                        try:
-                            audiofile = eyed3.load(file_name)
-                            if audiofile.tag is None:
-                                audiofile.tag = eyed3.id3.Tag()
-                                audiofile.tag.file_info = eyed3.id3.FileInfo(file_name)
-                            comments = u"Url pliku mp3: " + unicode(url) + "\n\n"
-                            audiofile.tag.comments.set(
-                                comments + u"Pobrane przy pomocy skryptu https://github.com/bohdanbobrowski/prdl")
-                            audiofile.tag.artist = u"Polskie Radio"
-                            audiofile.tag.album = u"polskieradio.pl"
-                            audiofile.tag.genre = u"Speech"
-                            audiofile.tag.title = unicode(title.decode('utf-8'))
-                            audiofile.tag.audio_file_url = url
-                            audiofile.tag.track_num = a
-                            audiofile.tag.save(version=ID3_V2_4, encoding='utf-8')
-                        except:
-                            print
-                            'Nie udalo się otagować pliku mp3...'
-                        if thumb != "":
-                            if (os.path.isfile('thumb.jpg')):
-                                os.remove('thumb.jpg')
-                            urllib.urlretrieve(thumb, 'thumb.jpg')
-                            image = Image.open('thumb.jpg')
-                            image = image.crop((82, 0, 282, 200))
-                            image.save('thumb.jpg')
-                            audio = MP3(file_name, ID3=ID3)
-                            try:
-                                audio.add_tags()
-                            except error:
-                                pass
-                            audio.tags.add(
-                                APIC(
-                                    encoding=3,
-                                    mime='image/jpeg',
-                                    type=3,
-                                    desc=u'Cover',
-                                    data=open('thumb.jpg').read()
-                                )
-                            )
-                            audio.save()
-                            if (os.path.isfile('thumb.jpg')):
-                                os.remove('thumb.jpg')
-                        else:
-                            audio = MP3(file_name, ID3=ID3)
-                            try:
-                                audio.add_tags()
-                            except error:
-                                pass
-                            audio.tags.add(
-                                APIC(
-                                    encoding=3,
-                                    mime='image/png',
-                                    type=3,
-                                    desc=u'Cover',
-                                    data=open(os.path.realpath(__file__).replace('prdl-cli.py',
-                                                                                 'polskieradio_logo_cover.png')).read()
-                                )
-                            )
-                            audio.save()
-                except urllib2.HTTPError as e:
-                    print(e.code)
-                    print(e.read())
+            if (self.confirmSave(self.save_all) == 1):
+                podcast.download()
+                podcast.id3tag()
+                podcast.addThumbnail()
 
-    def start():
-        # Parametry podstawowe:
-        if '-t' in sys.argv or '-T' in sys.argv:
-            SAVE_ALL = 1
-        if '-f' in sys.argv or '-F' in sys.argv:
-            FORCED_SEARCH = True
+    def getWebPageContent(self, url):
+        www = self.PageDownloader()
+        c = pycurl.Curl()
+        c.setopt(c.URL, sys.argv[1])
+        c.setopt(c.WRITEFUNCTION, www.body_callback)
+        c.setopt(c.HEADER, 1);
+        c.setopt(c.HTTPHEADER, self.headers)
+        c.setopt(c.FOLLOWLOCATION, 1)
+        c.setopt(c.USERAGENT, 'Mozilla/5.0 (X11; U; Linux i686; pl; rv:1.8.0.3) Gecko/20060426 Firefox/1.5.0.3')
+        c.setopt(c.REFERER, sys.argv[1])
+        c.setopt(c.COOKIEFILE, '')
+        c.perform()
+        c.close()
+        return www.contents
 
-        if len(sys.argv) > 1:
-            if (sys.argv[1].find("https://www.polskieradio.pl") == 0 or sys.argv[1].find(
-                    "http://www.polskieradio.pl") == 0):
-                drawSeparator('#')
-                print
-                "Analizowany url: " + sys.argv[1]
-                www = PobierzStrone()
-                c = pycurl.Curl()
-                c.setopt(c.URL, sys.argv[1])
-                c.setopt(c.WRITEFUNCTION, www.body_callback)
-                headers = ['Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-                           'Accept-Language: pl,en-us;q=0.7,en;q=0.3', 'Accept-Charset: ISO-8859-2,utf-8;q=0.7,*;q=0.7',
-                           'Content-Type: application/x-www-form-urlencoded']  # ,'Content-Length: 65']
-                c.setopt(c.HEADER, 1);
-                c.setopt(c.HTTPHEADER, headers)
-                c.setopt(c.FOLLOWLOCATION, 1)
-                c.setopt(c.USERAGENT, 'Mozilla/5.0 (X11; U; Linux i686; pl; rv:1.8.0.3) Gecko/20060426 Firefox/1.5.0.3')
-                c.setopt(c.REFERER, sys.argv[1])
-                c.setopt(c.COOKIEFILE, '')
-                c.perform()
-                html = www.contents
 
-                # 2.1. Ładujemy podstrony:
-                # 2.1.1. Analizujemy linki do podstron
-                try:
-                    tabId = int(re.search(
-                        '<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[\s]*([0-9]*),[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*, [a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\)',
-                        html).group(1))
-                    boxInstanceId = int(re.search(
-                        '<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([\s]*([0-9]*),[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*, [a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\)',
-                        html).group(1))
-                    sectionId = int(re.search(
-                        '<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[\s]*([0-9]*),[0-9\s]*,[0-9\s]*, [a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\)',
-                        html).group(1))
-                    categoryId = int(re.search(
-                        '<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[\s]*([0-9]*),[0-9\s]*, [a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\)',
-                        html).group(1))
-                    categoryType = int(re.search(
-                        '<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[\s]*([0-9]*), [a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\)',
-                        html).group(1))
-                    queryString = str(re.search(
-                        '<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[\s]*[0-9]*, &quot;&quot;, [0-9]*, &quot;([a-z0-9&;=]*)&quot;',
-                        html).group(1)).replace('&amp;', '&')
-                    tagIndexId = int(re.search(
-                        '<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*, &quot;&quot;, ([0-9]*)[a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\)',
-                        html).group(1))
-                    name = str(re.search(
-                        '<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[\s]*[0-9]*, &quot;&quot;, [0-9]*, &quot;[a-z0-9&;=]*&quot;, &quot;([a-zA-Z0-9\s]*)',
-                        html).group(1))
-                    pagerMode = '0'
-                    openArticlesInParentTemplate = 'True'
-                    idSectionFromUrl = sectionId
-                    maxDocumentAge = '-1'
-                    showCategoryForArticle = 'False'
-                    post = {
-                        'tabId': tabId,
-                        'boxInstanceId': boxInstanceId,
-                        'sectionId': sectionId,
-                        'categoryId': categoryId,
-                        'categoryType': categoryType,
-                        'subjectIds': "",
-                        'tagIndexId': tagIndexId,
-                        'queryString': queryString,
-                        'name': name,
-                        'pagerMode': 0,
-                        'openArticlesInParentTemplate': "True",
-                        'idSectionFromUrl': sectionId,
-                        'maxDocumentAge': 1000,
-                        # 'showCategoryForArticle' : "False"
-                    }
-                    analizuj_podstrony = 1
-                except (IndexError, AttributeError):
-                    analizuj_podstrony = 0
+class PrDlSearch(PrDl):
+    def __init__(self, phrase, save_all = False, forced_search = False):
+        self.phrase = phrase
+        self.search_str = unicode(phrase.decode('utf-8').upper())
+        self.forced_search = forced_search
+        self.save_all = save_all
 
-                pages = [] + re.findall(
-                    '<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*, [a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\);" class="">[\s]*([0-9]*)',
-                    html)
+    def getFiles(self, response):
+        files = []
+        files_dodane = []
+        # Najpierw szukam w responseach plików dźwiekowych
+        for w in response['response']['results']:
+            if 'files' in w:
+                for file in w['files']:
+                    if file['name'] not in files_dodane and file['type'] == u'Plik dźwiękowy':
+                        files.append(file)
+        # "Wzmocnione" szukanie - akceptuj tylko files dźwiekowe które w tytule mają szukaną frazę
+        if self.forced_search:
+            files_checked = []
+            for p in files:
+                p['description'] = p['description']
+                if len(p['description']) == 0:
+                    p['description'] = p['name'].replace('.mp3', '')
+                description = unicode(p['description'].upper())
+                if description.find(self.search_str) > -1:
+                    files_checked.append(p)
+            files = files_checked
+        return files
 
-                # Niestety ustawiam na 0 by nie tracić czasu na niedziałającą paginację (szczegóły niżej):
-                analizuj_podstrony = 0
+    def start(self):
+        search_url = 'http://apipr.polskieradio.pl/api/elasticArticles?sort_by=date&sort_order=desc&offset=0&limit=500&query=' + urllib.quote(self.phrase)
+        response = urllib.urlopen(search_url)
+        response = response.read()
+        response = json.loads(response)
+        if 'response' in response and 'results' in response['response'] and len(response['response']['results']) > 0:
+            self.drawSeparator('#')
+            files = self.getFiles(response)
+            a = 1
+            for p in files:
+                p['description'] = p['description'].encode('utf-8').strip()
+                if len(p['description']) == 0:
+                    p['description'] = p['name'].replace('.mp3', '').encode('utf-8')
+                p['path'] = p['path'].replace('.mp3.mp3', '.mp3')
+                self.downloadPodcastFile(p['path'], p['description'], '', a, len(files))
+                self.drawSeparator()
+                a += 1
 
-                if (analizuj_podstrony == 1 and len(pages) > 0):
-                    print
-                    "Znaleziono " + str(pages[-1]) + " podstron."
-                    p = 2
-                    while p <= int(pages[-1]):
-                        post['pageNumber'] = p
-                        post_data = json.dumps(post)
-                        print
-                        post_data
-                        www2 = PobierzStrone()
-                        c.setopt(c.URL,
-                                 'http://www.polskieradio.pl/CMS/DocumentsListsManagement/DocumentsListTabContent.aspx/GetTabContent')
-                        c.setopt(c.POST, 1)
-                        c.setopt(c.POSTFIELDS, post_data)
-                        c.setopt(c.WRITEFUNCTION, www2.body_callback)
-                        headers = ['Accept: application/json, text/javascript, */*; q=0.01',
-                                   'Accept-Language: pl,en-US;q=0.8,en;q=0.6,ru;q=0.4',
-                                   'Content-Type: application/json; charset=UTF-8']  # ,'Content-Length: 65']
-                        c.setopt(c.HEADER, 0);
-                        c.setopt(c.HTTPHEADER, headers)
-                        c.setopt(c.FOLLOWLOCATION, 1)
-                        c.setopt(c.USERAGENT,
-                                 'Mozilla/5.0 (X11; U; Linux i686; pl; rv:1.8.0.3) Gecko/20060426 Firefox/1.5.0.3')
-                        c.setopt(c.REFERER, sys.argv[1])
-                        c.perform()
-                        print
-                        www2.contents
-                        print
-                        "- pobieram " + str(p) + " podstronę"
-                        p = p + 1
-                        """
-                        Próbuje ogarnąć ta paginacje ale ciągle wywala błąd:
-                        at System.Linq.Enumerable.First[TSource](IEnumerable`1 source)
-                        at Billennium.PR.Business.Logic.Components.DocumentsListsLogic.<>c__DisplayClass52.<GetTab>b__51(IDbConnection conn)
-                        at Billennium.PR.Business.Persistence.MsSqlServer.DbConnectionProvider.UsingConnection(Action`1 codeBlock, Action`2 finallyBlock)
-                        at Billennium.PR.Business.Logic.Components.DocumentsListsLogic.GetTab(Int32 tabId)
-                        at Billennium.PR.Web.Portal.CMS.DocumentsListsManagement.DocumentsListTabContent.GetTabContent(Int32 tabId, Int32 boxInstanceId, Int32 sectionId, Int32 categoryId, Int32 categoryType, String subjectIds, Int32 tagIndexId, String queryString, String name, Int32 pageNumber, Int32 pagerMode, String openArticlesInParentTemplate, Int32 idSectionFromUrl, Int32 maxDocumentAge)
-        
-                        specyfikacja funkcji GetTabContent:
-                        GetTabContent(
-                            Int32 tabId,
-                            Int32 boxInstanceId,
-                            Int32 sectionId,
-                            Int32 categoryId,
-                            Int32 categoryType,
-                            String subjectIds,
-                            Int32 tagIndexId,
-                            String queryString,
-                            String name,
-                            Int32 pageNumber,
-                            Int32 pagerMode,
-                            String openArticlesInParentTemplate,
-                            Int32 idSectionFromUrl,
-                            Int32 maxDocumentAge
-                        )
-        
-                        moje query:
-                        {
-                            "tabId": 5677,
-                            "boxInstanceId": 16115,
-                            "sectionId": 8,
-                            "showCategoryForArticle": "False",
-                            "queryString": "stid=8&pid=7298&cttype=4&ctid=405",
-                            "subjectIds": "",
-                            "openArticlesInParentTemplate": "True",
-                            "pagerMode": 0,
-                            "name": "Poprzednie audycje",
-                            "idSectionFromUrl": 8,
-                            "tagIndexId": 444,
-                            "pageNumber": 3,
-                            "maxDocumentAge": -1,
-                            "categoryType": 4,
-                            "categoryId": 405
-                        }
-        
-                        Podejrzewam że coś z ciastkami albo naglowkami jest nie teges.
-                        """
+class PrDlCrawl(object):
+    def __init__(self, url, save_all = False):
+        self.url =  url
+        self.save_all = save_all
+        self.headers = ['Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+           'Accept-Language: pl,en-us;q=0.7,en;q=0.3', 'Accept-Charset: ISO-8859-2,utf-8;q=0.7,*;q=0.7',
+           'Content-Type: application/x-www-form-urlencoded']
 
-                c.close()
+    def getPages(self, html):
+        return [] + re.findall(
+            '<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*, [a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\);" class="">[\s]*([0-9]*)',
+            html
+        )
 
-                # 2.2. Szukamy podkastów:
-                links = [] + re.findall(
-                    'onclick="javascript:playFile\(\'[^\']*\',\'([^\']*)\',\'[^\']*\',\'[^\']*\',\'[^\']*\',\'1\',\'[^\']*\'\);',
-                    html)
-                titles = [] + re.findall(
-                    'onclick="javascript:playFile\(\'[^\']*\',\'[^\']*\',\'([^\']*)\',\'[^\']*\',\'[^\']*\',\'1\',\'[^\']*\'\);',
-                    html)
-                descriptions = [] + re.findall(
-                    'onclick="javascript:playFile\(\'[^\']*\',\'[^\']*\',\'([^\']*)\',\'[^\']*\',\'[^\']*\',\'1\',\'[^\']*\'\);',
-                    html)
-                links = links + re.findall(
-                    '"file":"([^"]*)","provider":"audio","uid":"[^"]*","length":[0-9]*,"autostart":[a-z]*,"link":"[^"]*","title":"[^"]*"',
-                    html)
-                titles = titles + re.findall(
-                    '"file":"[^"]*","provider":"audio","uid":"[^"]*","length":[0-9]*,"autostart":[a-z]*,"link":"[^"]*","title":"([^"]*)"',
-                    html)
-                descriptions = descriptions + re.findall(
-                    '"file":"[^"]*","provider":"audio","uid":"[^"]*","length":[0-9]*,"autostart":[a-z]*,"link":"[^"]*","title":"[^"]*","desc":"([^"]*)"',
-                    html)
-                thumbs = []
+    def getLinks(self, html):
+        links = [] + re.findall(
+            'onclick="javascript:playFile\(\'[^\']*\',\'([^\']*)\',\'[^\']*\',\'[^\']*\',\'[^\']*\',\'1\',\'[^\']*\'\);',
+            html
+        )
+        links += re.findall(
+            '"file":"([^"]*)","provider":"audio","uid":"[^"]*","length":[0-9]*,"autostart":[a-z]*,"link":"[^"]*","title":"[^"]*"',
+            html
+        )
+        return links
 
-                # 2.3. Jeżeli te dwa sposoby nie przyniosły skutku, szukamy raz jeszcze inaczej:
-                if (len(links) == 0):
-                    links = re.findall('"file":"([^"]*)"', html)
-                    titles = re.findall('"title":"([^"]*)"', html)
+    def getTitles(self, html):
+        titles = [] + re.findall(
+            'onclick="javascript:playFile\(\'[^\']*\',\'[^\']*\',\'([^\']*)\',\'[^\']*\',\'[^\']*\',\'1\',\'[^\']*\'\);',
+            html
+        )
+        titles += re.findall(
+            '"file":"[^"]*","provider":"audio","uid":"[^"]*","length":[0-9]*,"autostart":[a-z]*,"link":"[^"]*","title":"([^"]*)"',
+            html
+        )
+        return titles
 
-                # 3. Budujemy listę unikalnych linków:
-                download_list = []
-                added_links = []
-                if (len(links) == len(titles) and len(links) > 0):
-                    for (x, y) in enumerate(links):
-                        if links[x] not in added_links:
-                            url = links[x]
-                            added_links.append(url)
-                            if url.find('//static') > -1 and url.find('http://') == -1:
-                                url = 'http:' + url
-                            if url.find('http://static') == -1:
-                                url = 'http://static.polskieradio.pl/' + url + '.mp3'
-                            title = titles[x]
-                            description = descriptions[x]
-                            # Jeżeli tytuł jest pusty szukamy tytułu w źródle raz jeszcze:
-                            if title == '':
-                                podcast_id = str(url.replace('http://static.polskieradio.pl/', '').replace('.mp3', ''))
-                                if re.search(
-                                        "playFile\('[0-9]*','" + podcast_id + "','','[0-9]*','[0-9a-zA-Z\/]*\,([^']*)",
-                                        html):
-                                    podcast_title = re.search(
-                                        "playFile\('[0-9]*','" + podcast_id + "','','[0-9]*','[0-9a-zA-Z\/]*\,([^']*)",
-                                        html).group(1)
-                                    title = podcast_title
-                                else:
-                                    title = re.search("<title>([^<^>]*)</title>", html).group(1)
-                                    title = title.strip() + " " + podcast_id
-                            title = urllib2.unquote(title)
-                            if title.find('.mp3') > -1:
-                                title = urllib2.unquote(description);
-                            regex = '<img alt="' + title + '" height="[^"]*" src="([^"]*)" width="[^"]*"'
-                            thumb = re.findall(regex, html)
-                            if len(thumb) == 1:
-                                thumb = 'http:' + thumb[0]
-                                thumb = re.sub('\?format=[0-9x]*', '?format=364', thumb)
-                            else:
-                                thumb = ""
-                            fname = title
-                            title = title.replace('&quot;', '"')
-                            title = title.replace('""', '"')
-                            fname = fname.replace('&quot;', '')
-                            fname = fname.replace('?', '')
-                            fname = fname.replace('(', '')
-                            fname = fname.replace(')', '')
-                            fname = fname.replace(':', '_')
-                            fname = fname.replace(' ', '_')
-                            fname = fname.replace('/', '_')
-                            fname = fname.replace('"', '')
-                            fname = fname.replace('_-_', '-')
-                            fname = fname.replace('_-_', '-')
-                            fname = fname.replace('_-_', '-')
-                            d_l = {'url': url, 'title': title, 'description': description, 'fname': fname,
-                                   'thumb': thumb}
-                            download_list.append(d_l)
-                # 4. Pobieranie:
-                print
-                'Rozpoczynamy pobieranie:'
-                drawSeparator()
-                a = 1
-                for d in download_list:
-                    if len(d['title']) == 0:
-                        d['title'] = d['url'].replace('.mp3', '')
-                    d['url'] = d['url'].replace('.mp3.mp3', '.mp3')
-                    self.downloadPodcastFile(d['url'], d['title'], d['description'], a, len(download_list), d['thumb'])
-                    drawSeparator()
-                    a += 1
-                drawSeparator('#')
+    def getDescriptions(self, html):
+        descr = [] + re.findall(
+            'onclick="javascript:playFile\(\'[^\']*\',\'[^\']*\',\'([^\']*)\',\'[^\']*\',\'[^\']*\',\'1\',\'[^\']*\'\);',
+        html)
+        descr += re.findall(
+            '"file":"[^"]*","provider":"audio","uid":"[^"]*","length":[0-9]*,"autostart":[a-z]*,"link":"[^"]*","title":"[^"]*","desc":"([^"]*)"',
+            html
+        )
+        return descr
 
+    def getThumbnailUrl(self, title, html):
+        regex = '<img alt="' + title + '" height="[^"]*" src="([^"]*)" width="[^"]*"'
+        thumb = re.findall(regex, html)
+        if len(thumb) == 1:
+            thumb = 'http:' + thumb[0]
+            thumb = re.sub('\?format=[0-9x]*', '?format=364', thumb)
+        else:
+            thumb = ""
+        return thumb
+
+    def fillEmptyTitle(self, title, url, html):
+        # Jeżeli tytuł jest pusty szukamy tytułu w źródle raz jeszcze:
+        if title == '':
+            podcast_id = str(url.replace('http://static.polskieradio.pl/', '').replace('.mp3', ''))
+            if re.search(
+                    "playFile\('[0-9]*','" + podcast_id + "','','[0-9]*','[0-9a-zA-Z\/]*\,([^']*)",
+                    html):
+                title = re.search(
+                    "playFile\('[0-9]*','" + podcast_id + "','','[0-9]*','[0-9a-zA-Z\/]*\,([^']*)",
+                    html).group(1)
             else:
-                # Jeżeli nie podano bezpośredniego linku staramy się wyszukać słowo kluczowe
-                search_url = 'http://apipr.polskieradio.pl/api/elasticArticles?sort_by=date&sort_order=desc&offset=0&limit=500&query=' + urllib.quote(
-                    sys.argv[1])
-                search_str = unicode(sys.argv[1].decode('utf-8').upper())
-                wynik = urllib.urlopen(search_url)
-                wynik = wynik.read()
-                wynik = json.loads(wynik)
-                pliki_dodane = []
-                pliki = []
-                if 'response' in wynik and 'results' in wynik['response'] and len(wynik['response']['results']) > 0:
-                    drawSeparator('#')
-                    # Najpierw szukam w wynikach plików dźwiekowych
-                    for w in wynik['response']['results']:
-                        if 'files' in w:
-                            for file in w['files']:
-                                if file['name'] not in pliki_dodane and file['type'] == u'Plik dźwiękowy':
-                                    pliki.append(file)
+                title = re.search("<title>([^<^>]*)</title>", html).group(1)
+                title = title.strip() + " " + podcast_id
+        return title
 
-                    # "Wzmocnione" szukanie - akceptuj tylko pliki dźwiekowe które w tytule mają szukaną frazę
-                    if FORCED_SEARCH:
-                        pliki_sprawdzone = []
-                        for p in pliki:
-                            p['description'] = p['description']
-                            if len(p['description']) == 0:
-                                p['description'] = p['name'].replace('.mp3', '')
-                            description = unicode(p['description'].upper())
-                            if description.find(search_str) > -1:
-                                pliki_sprawdzone.append(p)
-                        pliki = pliki_sprawdzone
+    def getDownloadsList(self, links, titles, descriptions, html):
+        downloads_list = []
+        added_links = []
+        if (len(links) == len(titles) and len(links) > 0):
+            for (x, y) in enumerate(links):
+                if links[x] not in added_links:
+                    url = links[x]
+                    added_links.append(url)
+                    if url.find('//static') > -1 and url.find('http://') == -1:
+                        url = 'http:' + url
+                    if url.find('http://static') == -1:
+                        url = 'http://static.polskieradio.pl/' + url + '.mp3'
+                    title = titles[x]
+                    description = descriptions[x]
+                    title = self.fillEmptyTitle(title, url, html)
+                    title = urllib2.unquote(title)
+                    if title.find('.mp3') > -1:
+                        title = urllib2.unquote(description);
+                    fname = title
+                    title = title.replace('&quot;', '"')
+                    title = title.replace('""', '"')
+                    fname = fname.replace('&quot;', '')
+                    fname = fname.replace('?', '')
+                    fname = fname.replace('(', '')
+                    fname = fname.replace(')', '')
+                    fname = fname.replace(':', '_')
+                    fname = fname.replace(' ', '_')
+                    fname = fname.replace('/', '_')
+                    fname = fname.replace('"', '')
+                    fname = fname.replace('_-_', '-')
+                    fname = fname.replace('_-_', '-')
+                    fname = fname.replace('_-_', '-')
+                    d_l = {'url': url, 'title': title, 'description': description, 'fname': fname,
+                           'thumb': self.getThumbnailUrl(title, html)}
+                    downloads_list.append(d_l)
+        return downloads_list
 
-                    # Zabieram się za Pobieranie
-                    a = 1
-                    for p in pliki:
-                        p['description'] = p['description'].encode('utf-8')
-                        if len(p['description']) == 0:
-                            p['description'] = p['name'].replace('.mp3', '').encode('utf-8')
-                        p['path'] = p['path'].replace('.mp3.mp3', '.mp3')
-                        self.downloadPodcastFile(p['path'], p['description'], '', a, len(pliki))
-                        drawSeparator()
-                        a += 1
+    def start(self):
+        self.drawSeparator('#')
+        print "Analizowany url: " + self.url
+        html = self.getWebPageContent(self.url)
+        links = self.getLinks(html)
+        titles = self.getTitles(html)
+        descriptions = self.getDescriptions(html)
+        if (len(links) == 0):
+            links = re.findall('"file":"([^"]*)"', html)
+            titles = re.findall('"title":"([^"]*)"', html)
+        downloads_list = self.getDownloadsList(links, titles, descriptions, html)
+        self.drawSeparator()
+        a = 1
+        for d in downloads_list:
+            if len(d['title']) == 0:
+                d['title'] = d['url'].replace('.mp3', '')
+            d['url'] = d['url'].replace('.mp3.mp3', '.mp3')
+            self.downloadPodcastFile(d['url'], d['title'], d['description'], a, len(downloads_list), d['thumb'])
+            self.drawSeparator()
+            a += 1
+        self.drawSeparator('#')
 
 
-class PobierzStrone:
+class PageDownloader:
     def __init__(self):
         self.contents = ''
 
