@@ -29,7 +29,7 @@ setup(
         ],
     },
     package_data={
-        'pr-dl': [
+        'prdl': [
             '*.png'
         ]
     },
