@@ -14,7 +14,6 @@ import sys
 import urllib
 import urllib2
 import json
-import traceback
 from clint.textui import puts, colored
 from PIL import Image
 
@@ -29,9 +28,9 @@ class PrDlPodcast(object):
         self.file_size = 0
         self.thumbnail_url = thumbnail_url
         self.thumbnail_delete_after = False
+        self.thumbnail_default_fn = self.getDefaultThumbnail()
         self.setThumbnailFileName()
         self.track_number = track_number
-
 
     def getUrlHash(self):
         url_hash = hashlib.md5()
@@ -54,22 +53,26 @@ class PrDlPodcast(object):
             self.thumbnail_delete_after = True
             self.thumbnail_file_name = self.url_hash + "." + expr
         else:
-            self.thumbnail_mime = 'image/png'
+            self.thumbnail_delete_after = False
+            self.thumbnail_file_name = self.thumbnail_default_fn
 
-            self.thumbnail_file_name = os.path.realpath(__file__).replace('prdl-cli.py', 'polskieradio_logo_cover.png')
+    def getDefaultThumbnail(self):
+        self.thumbnail_mime = 'image/png'
+        tpath = os.path.realpath(__file__).split('/')
+        tpath.pop()
+        tpath.append('polskieradio_logo_cover.png')
+        tpath = '/'.join(tpath)
+        return tpath
 
     def downloadThumbnail(self):
-        print self.thumbnail_url
-        print self.thumbnail_file_name
-        fpath = os.path.realpath(__file__).replace('prdl-cli.py', self.thumbnail_file_name)
-        print fpath
+        fpath = os.getcwd() + "/" + self.thumbnail_file_name
         if (os.path.isfile(fpath)):
             os.remove(fpath)
-        urllib.urlretrieve(self.thumbnail_url, fpath)
-        print os.path.isfile(fpath)
-        image = Image.open(fpath)
-        image = image.crop((82, 0, 282, 200))
-        image.save(self.thumbnail_file_name)
+        if self.thumbnail_url:
+            urllib.urlretrieve(self.thumbnail_url, fpath)
+            image = Image.open(fpath)
+            image = image.crop((82, 0, 282, 200))
+            image.save(self.thumbnail_file_name)
 
     def addThumbnail(self):
         if (os.path.isfile(self.file_name)):
@@ -138,7 +141,6 @@ class PrDlPodcast(object):
                 audiofile.tag.save(version=ID3_V2_4, encoding='utf-8')
             except Exception as error:
                 print 'Nie udalo się otagować pliku mp3...'
-            traceback.print_exc()
 
 
 class PrDl(object):
