@@ -233,6 +233,8 @@ class PrDlSearch(PrDl):
             if 'files' in w:
                 for file in w['files']:
                     if file['name'] not in files_dodane and file['type'] == u'Plik dźwiękowy':
+                        file['thumbnail_url'] = w['thumbnail_url']
+                        file['lead'] = w['lead']
                         files.append(file)
         # "Wzmocnione" szukanie - akceptuj tylko files dźwiekowe które w tytule mają szukaną frazę
         if self.forced_search:
@@ -261,7 +263,7 @@ class PrDlSearch(PrDl):
                 if len(p['description']) == 0:
                     p['description'] = p['name'].replace('.mp3', '').encode('utf-8')
                 p['path'] = p['path'].replace('.mp3.mp3', '.mp3')
-                self.downloadPodcastFile(p['path'], p['description'], '', a, len(files))
+                self.downloadPodcastFile(p['path'], p['description'], p['lead'], a, len(files), p['thumbnail_url'])
                 self.drawSeparator()
                 a += 1
 
