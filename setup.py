@@ -6,7 +6,7 @@ from setuptools import setup
 
 setup(
     name='pr-dl',
-    version='0.3',
+    version='0.3.1  ',
     description="Polish Radio Downloader",
     url="https://github.com/bohdanbobrowski/pr-dl",
     author="Bohdan Bobrowski",
@@ -28,4 +28,10 @@ setup(
             'prdl = prdl.prdlcli:main'
         ],
     },
+    package_data={
+        'pr-dl': [
+            '*.png'
+        ]
+    },
+    include_package_data = True,
 )

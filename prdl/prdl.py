@@ -55,13 +55,19 @@ class PrDlPodcast(object):
             self.thumbnail_file_name = self.url_hash + "." + expr
         else:
             self.thumbnail_mime = 'image/png'
+
             self.thumbnail_file_name = os.path.realpath(__file__).replace('prdl-cli.py', 'polskieradio_logo_cover.png')
 
     def downloadThumbnail(self):
-        if (os.path.isfile(self.thumbnail_file_name)):
-            os.remove(self.thumbnail_file_name)
-        urllib.urlretrieve(self.thumbnail_url, self.thumbnail_file_name)
-        image = Image.open(self.thumbnail_file_name)
+        print self.thumbnail_url
+        print self.thumbnail_file_name
+        fpath = os.path.realpath(__file__).replace('prdl-cli.py', self.thumbnail_file_name)
+        print fpath
+        if (os.path.isfile(fpath)):
+            os.remove(fpath)
+        urllib.urlretrieve(self.thumbnail_url, fpath)
+        print os.path.isfile(fpath)
+        image = Image.open(fpath)
         image = image.crop((82, 0, 282, 200))
         image.save(self.thumbnail_file_name)
 
@@ -132,7 +138,6 @@ class PrDlPodcast(object):
                 audiofile.tag.save(version=ID3_V2_4, encoding='utf-8')
             except Exception as error:
                 print 'Nie udalo się otagować pliku mp3...'
-                print error
             traceback.print_exc()
 
 
@@ -192,6 +197,7 @@ class PrDl(object):
             if (self.confirmSave(self.save_all) == 1):
                 podcast.download()
                 podcast.id3tag()
+                podcast.downloadThumbnail()
                 podcast.addThumbnail()
 
     def getWebPageContent(self, url):
@@ -303,18 +309,15 @@ class PrDlCrawl(PrDl):
         )
         return descr
 
-    def getThumbnailUrl(self, title, html):
-        regex = '<img alt="' + title + '" height="[^"]*" src="([^"]*)" width="[^"]*"'
-        thumb = re.findall(regex, html)
-        if len(thumb) == 1:
-            thumb = 'http:' + thumb[0]
-            thumb = re.sub('\?format=[0-9x]*', '?format=364', thumb)
-        else:
-            thumb = ""
-        return thumb
+    def getThumbnails(self, html):
+        regex = 'id="imgArticleMain" src=.([^"\']*)'
+        thumbs = re.findall(regex, html)
+        result = []
+        for thumb in thumbs:
+            result.append('https:' + thumb)
+        return result
 
     def fillEmptyTitle(self, title, url, html):
-        # Jeżeli tytuł jest pusty szukamy tytułu w źródle raz jeszcze:
         if title == '':
             podcast_id = str(url.replace('http://static.polskieradio.pl/', '').replace('.mp3', ''))
             if re.search(
@@ -328,7 +331,7 @@ class PrDlCrawl(PrDl):
                 title = title.strip() + " " + podcast_id
         return title
 
-    def getDownloadsList(self, links, titles, descriptions, html):
+    def getDownloadsList(self, links, titles, thumbnails, descriptions, html):
         downloads_list = []
         added_links = []
         if (len(links) == len(titles) and len(links) > 0):
@@ -360,9 +363,17 @@ class PrDlCrawl(PrDl):
                     fname = fname.replace('_-_', '-')
                     fname = fname.replace('_-_', '-')
                     fname = fname.replace('_-_', '-')
-                    d_l = {'url': url, 'title': title, 'description': description, 'fname': fname,
-                           'thumb': self.getThumbnailUrl(title, html)}
-                    downloads_list.append(d_l)
+                    row = {
+                        'url': url,
+                        'title': title,
+                        'description': description,
+                        'fname': fname
+                    }
+                    try:
+                        row["thumb"] = thumbnails[(x/2)]
+                    except Exception:
+                        row["thumb"] = ""
+                    downloads_list.append(row)
         return downloads_list
 
     def start(self):
@@ -375,7 +386,8 @@ class PrDlCrawl(PrDl):
         if (len(links) == 0):
             links = re.findall('"file":"([^"]*)"', html)
             titles = re.findall('"title":"([^"]*)"', html)
-        downloads_list = self.getDownloadsList(links, titles, descriptions, html)
+        thumbnails = self.getThumbnails(html)
+        downloads_list = self.getDownloadsList(links, titles, thumbnails, descriptions, html)
         self.drawSeparator()
         a = 1
         for d in downloads_list:
