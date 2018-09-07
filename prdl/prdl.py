@@ -70,9 +70,14 @@ class PrDlPodcast(object):
             os.remove(fpath)
         if self.thumbnail_url:
             urllib.urlretrieve(self.thumbnail_url, fpath)
+            size = (200, 200)
             image = Image.open(fpath)
-            image = image.crop((82, 0, 282, 200))
-            image.save(self.thumbnail_file_name)
+            image.thumbnail(size, Image.ANTIALIAS)
+            background = Image.open(self.thumbnail_default_fn)
+            background.paste(
+                image, (int((size[0] - image.size[0]) / 2), int((size[1] - image.size[1]) / 2))
+            )
+            background.save(self.thumbnail_file_name)
 
     def addThumbnail(self):
         if (os.path.isfile(self.file_name)):
