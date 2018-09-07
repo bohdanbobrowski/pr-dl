@@ -57,10 +57,10 @@ class PrDlPodcast(object):
             self.thumbnail_file_name = self.thumbnail_default_fn
 
     def getDefaultThumbnail(self):
-        self.thumbnail_mime = 'image/png'
+        self.thumbnail_mime = 'image/jpg'
         tpath = os.path.realpath(__file__).split('/')
         tpath.pop()
-        tpath.append('polskieradio_logo_cover.png')
+        tpath.append('polskieradio_logo_cover.jpg')
         tpath = '/'.join(tpath)
         return tpath
 

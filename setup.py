@@ -30,7 +30,7 @@ setup(
     },
     package_data={
         'prdl': [
-            '*.png'
+            '*.jpg'
         ]
     },
     include_package_data = True,
