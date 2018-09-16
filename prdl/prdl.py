@@ -249,7 +249,8 @@ class PrDlSearch(PrDl):
                 if len(p['description']) == 0:
                     p['description'] = p['name'].replace('.mp3', '')
                 description = unicode(p['description'].upper())
-                if description.find(self.search_str) > -1:
+                lead = unicode(p['lead'].upper())
+                if self.search_str in description or self.search_str in lead:
                     files_checked.append(p)
             files = files_checked
         return files
