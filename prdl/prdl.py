@@ -210,13 +210,13 @@ class PrDl(object):
     def getWebPageContent(self, url):
         www = PageDownloader()
         c = pycurl.Curl()
-        c.setopt(c.URL, sys.argv[1])
+        c.setopt(c.URL, url)
         c.setopt(c.WRITEFUNCTION, www.body_callback)
         c.setopt(c.HEADER, 1);
         c.setopt(c.HTTPHEADER, self.headers)
         c.setopt(c.FOLLOWLOCATION, 1)
         c.setopt(c.USERAGENT, 'Mozilla/5.0 (X11; U; Linux i686; pl; rv:1.8.0.3) Gecko/20060426 Firefox/1.5.0.3')
-        c.setopt(c.REFERER, sys.argv[1])
+        c.setopt(c.REFERER, url)
         c.setopt(c.COOKIEFILE, '')
         c.perform()
         c.close()
