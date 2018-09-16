@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from download import download
 import eyed3
 from eyed3.id3 import ID3_V2_4
 from mutagen.mp3 import MP3
@@ -10,7 +11,6 @@ import os
 from slugify import slugify
 import pycurl
 import re
-import sys
 import urllib
 import urllib2
 import json
@@ -65,7 +65,7 @@ class PrDlPodcast(object):
         return tpath
 
     def downloadThumbnail(self):
-        fpath = os.getcwd() + "/" + self.thumbnail_file_name
+        fpath = os.getcwd() + '/' + str(self.thumbnail_file_name).strip()
         if (os.path.isfile(fpath)):
             os.remove(fpath)
         if self.thumbnail_url:
@@ -99,32 +99,6 @@ class PrDlPodcast(object):
                 audio.save()
                 if self.thumbnail_delete_after:
                     os.remove(self.thumbnail_file_name)
-
-    def download(self):
-        try:
-            remote = urllib2.urlopen(self.url)
-            file = open(self.file_name, 'wb')
-            meta = remote.info()
-            self.file_size = int(meta.getheaders("Content-Length")[0])
-            print("Pobieranie: {0} Rozmiar: {1}".format(self.url, self.file_size))
-            file_size_dl = 0
-            block_sz = 8192
-            while True:
-                buffer = remote.read(block_sz)
-                if not buffer:
-                    break
-                file_size_dl += len(buffer)
-                file.write(buffer)
-                p = float(file_size_dl) / self.file_size
-                status = r"{0}  [{1:.2%}]".format(file_size_dl, p)
-                status = status + chr(8) * (len(status) + 1)
-                sys.stdout.write(status)
-            file.close()
-            return True
-        except urllib2.HTTPError as error:
-            print(error.code)
-            print(error.read())
-            return False
 
     def id3tag(self):
         if (os.path.isfile(self.file_name)):
@@ -202,7 +176,7 @@ class PrDl(object):
             print '[!] Plik o tej nazwie istnieje w katalogu docelowym'
         else:
             if (self.confirmSave(self.save_all) == 1):
-                podcast.download()
+                download(url, './' + podcast.file_name)
                 podcast.id3tag()
                 podcast.downloadThumbnail()
                 podcast.addThumbnail()
