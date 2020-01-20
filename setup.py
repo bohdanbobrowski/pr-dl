@@ -16,7 +16,7 @@ setup(
         "prdl"
     ],
     install_requires=[
-        "eyed3",
+        "eyed3==0.8.12",
         "mutagen",
         "slugify",
         "pycurl",
