@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 from download import download
@@ -10,12 +10,14 @@ import hashlib
 import os
 from slugify import slugify
 import pycurl
+import requests
 import re
 import urllib
-import urllib2
+import urllib.request
 import json
 from clint.textui import puts, colored
 from PIL import Image
+from bs4 import BeautifulSoup
 
 
 class PrDlPodcast(object):
@@ -23,7 +25,7 @@ class PrDlPodcast(object):
         self.url = url
         self.title = title
         self.url_hash = self.getUrlHash()
-        self.description = description
+        self.description = BeautifulSoup(description).get_text()
         self.file_name = self.getFileName()
         self.file_size = 0
         self.thumbnail_url = thumbnail_url
@@ -33,12 +35,11 @@ class PrDlPodcast(object):
         self.track_number = track_number
 
     def getUrlHash(self):
-        url_hash = hashlib.md5()
-        url_hash.update(self.url)
+        url_hash = hashlib.md5(self.url.encode("utf-8"))
         return str(url_hash.hexdigest()[0:20])
 
     def getFileName(self):
-        file_name = slugify(self.title.replace('ł', 'l').replace('Ł', 'L').decode('utf-8'))
+        file_name = slugify(self.title.replace('ł', 'l').replace('Ł', 'L'))
         if len(file_name) > 100:
             file_name = file_name[0:97] + "..."
         if len(file_name) == 0:
@@ -69,7 +70,7 @@ class PrDlPodcast(object):
         if (os.path.isfile(fpath)):
             os.remove(fpath)
         if self.thumbnail_url:
-            urllib.urlretrieve(self.thumbnail_url, fpath)
+            urllib.request.urlretrieve(self.thumbnail_url, fpath)
             size = (200, 200)
             image = Image.open(fpath)
             image.thumbnail(size, Image.ANTIALIAS)
@@ -87,13 +88,14 @@ class PrDlPodcast(object):
             except error:
                 pass
             if (os.path.isfile(self.thumbnail_file_name)):
+                thumbf = open(self.thumbnail_file_name, 'rb')
                 audio.tags.add(
                     APIC(
                         encoding=3,
                         mime=self.thumbnail_mime,
                         type=3,
-                        desc=u'Cover',
-                        data=open(self.thumbnail_file_name).read()
+                        desc='Cover',
+                        data=thumbf.read()
                     )
                 )
                 audio.save()
@@ -108,21 +110,28 @@ class PrDlPodcast(object):
                     audiofile.tag = eyed3.id3.Tag()
                     audiofile.tag.file_info = eyed3.id3.FileInfo(self.file_name)
                 comments = self.description +"\n\n"
-                comments += u"Url pliku mp3: " + unicode(self.url) + "\n\n"
+                comments += "Url pliku mp3: " + self.url + "\n\n"
                 audiofile.tag.comments.set(
-                    comments + u"Pobrane przy pomocy skryptu https://github.com/bohdanbobrowski/pr-dl")
-                audiofile.tag.artist = u"Polskie Radio"
-                audiofile.tag.album = u"polskieradio.pl"
-                audiofile.tag.genre = u"Speech"
-                audiofile.tag.title = unicode(self.title.decode('utf-8'))
+                    comments + "Pobrane przy pomocy skryptu https://github.com/bohdanbobrowski/pr-dl")
+                audiofile.tag.artist = "Polskie Radio"
+                audiofile.tag.album = "polskieradio.pl"
+                audiofile.tag.genre = "Speech"
+                audiofile.tag.title = self.title
                 audiofile.tag.audio_file_url = self.url
                 audiofile.tag.track_num = self.track_number
                 audiofile.tag.save(version=ID3_V2_4, encoding='utf-8')
             except Exception as error:
-                print 'Nie udalo się otagować pliku mp3...'
+                print(error)
 
 
 class PrDl(object):
+    def __init__(self, phrase, save_all = False, forced_search = False):
+        self.phrase = phrase
+        self.search_str = phrase.upper()
+        self.forced_search = forced_search
+        self.save_all = save_all
+        self.headers = None
+
     def getKey(self):
         if os.name == 'nt':
             from msvcrt import getch
@@ -142,7 +151,7 @@ class PrDl(object):
         separator = ''
         for x in range(0, columns):
             separator = separator + sign
-        print separator
+        print(separator)
 
     def confirmSave(self, answer):
         if (answer == 1):
@@ -173,7 +182,7 @@ class PrDl(object):
         if thumb != "":
             puts(colored.white('Miniaturka: ' + thumb))
         if (os.path.isfile(podcast.file_name)):
-            print '[!] Plik o tej nazwie istnieje w katalogu docelowym'
+            print("[!] Plik o tej nazwie istnieje w katalogu docelowym")
         else:
             if (self.confirmSave(self.save_all) == 1):
                 download(url, './' + podcast.file_name)
@@ -182,39 +191,32 @@ class PrDl(object):
                 podcast.addThumbnail()
 
     def getWebPageContent(self, url):
-        www = PageDownloader()
-        c = pycurl.Curl()
-        c.setopt(c.URL, url)
-        c.setopt(c.WRITEFUNCTION, www.body_callback)
-        c.setopt(c.HEADER, 1);
-        c.setopt(c.HTTPHEADER, self.headers)
-        c.setopt(c.FOLLOWLOCATION, 1)
-        c.setopt(c.USERAGENT, 'Mozilla/5.0 (X11; U; Linux i686; pl; rv:1.8.0.3) Gecko/20060426 Firefox/1.5.0.3')
-        c.setopt(c.REFERER, url)
-        c.setopt(c.COOKIEFILE, '')
-        c.perform()
-        c.close()
-        return www.contents
+        response = requests.get(url)
+        return response.text
 
 
 class PrDlSearch(PrDl):
-    def __init__(self, phrase, save_all = False, forced_search = False):
-        self.phrase = phrase
-        self.search_str = unicode(phrase.decode('utf-8').upper())
-        self.forced_search = forced_search
-        self.save_all = save_all
 
     def getFiles(self, response):
         files = []
         files_dodane = []
+        types = {}
         # Najpierw szukam w responseach plików dźwiekowych
-        for w in response['response']['results']:
+        for w in response:
+            if w['type'] in types:
+                types[w['type']] = types[w['type']] + 1
+            else:
+                types[w['type']] = 1
             if 'files' in w:
+                print(w)
                 for file in w['files']:
-                    if file['name'] not in files_dodane and file['type'] == u'Plik dźwiękowy':
+                    if file['name'] not in files_dodane and file['type'] == 'Plik dźwiękowy':
                         file['thumbnail_url'] = w['thumbnail_url']
                         file['lead'] = w['lead']
                         files.append(file)
+            if w['type'] != 'Article':
+                print(w)
+        print(types)
         # "Wzmocnione" szukanie - akceptuj tylko files dźwiekowe które w tytule mają szukaną frazę
         if self.forced_search:
             files_checked = []
@@ -222,30 +224,38 @@ class PrDlSearch(PrDl):
                 p['description'] = p['description']
                 if len(p['description']) == 0:
                     p['description'] = p['name'].replace('.mp3', '')
-                description = unicode(p['description'].upper())
-                lead = unicode(p['lead'].upper())
+                description = p['description'].upper()
+                lead = p['lead'].upper()
                 if self.search_str in description or self.search_str in lead:
                     files_checked.append(p)
             files = files_checked
         return files
 
+    def _get_search_url(self, page =1):
+        # search_url = 'http://apipr.polskieradio.pl/api/elasticArticles?sort_by=date&sort_order=desc&offset=0&limit=500&query=' + urllib.quote(self.phrase)
+        search_url = 'https://portalsearch.polskieradio.pl/api/search?page=' + str(page) + '&query=%' + urllib.parse.quote(self.phrase) + '%22'
+        print("Pobieram: {}".format(search_url))
+        return search_url
+
     def start(self):
-        search_url = 'http://apipr.polskieradio.pl/api/elasticArticles?sort_by=date&sort_order=desc&offset=0&limit=500&query=' + urllib.quote(self.phrase)
-        response = urllib.urlopen(search_url)
-        response = response.read()
-        response = json.loads(response)
-        if 'response' in response and 'results' in response['response'] and len(response['response']['results']) > 0:
-            self.drawSeparator('#')
-            files = self.getFiles(response)
-            a = 1
-            for p in files:
-                p['description'] = p['description'].encode('utf-8').strip()
-                if len(p['description']) == 0:
-                    p['description'] = p['name'].replace('.mp3', '').encode('utf-8')
-                p['path'] = p['path'].replace('.mp3.mp3', '.mp3')
-                self.downloadPodcastFile(p['path'], p['description'], p['lead'], a, len(files), p['thumbnail_url'])
-                self.drawSeparator()
-                a += 1
+        results = []
+        response = json.loads(urllib.request.urlopen(self._get_search_url()).read())
+        results = results + response['results']
+        pages = round(int(response['count']) / int(response['pageSize']))
+        if pages > 1:
+            for p in range(2, pages):
+                response = json.loads(urllib.request.urlopen(self._get_search_url(p)).read())
+                results = results + response['results']
+        a = 1
+        for p in self.getFiles(results):
+            p['description'] = p['description'].encode('utf-8').strip()
+            if len(p['description']) == 0:
+                p['description'] = p['name'].replace('.mp3', '').encode('utf-8')
+            p['path'] = p['path'].replace('.mp3.mp3', '.mp3')
+            self.downloadPodcastFile(p['path'], p['description'], p['lead'], a, len(files), p['thumbnail_url'])
+            self.drawSeparator()
+            a += 1
+
 
 class PrDlCrawl(PrDl):
     def __init__(self, url, save_all = False):
@@ -254,7 +264,7 @@ class PrDlCrawl(PrDl):
         self.headers = ['Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
            'Accept-Language: pl,en-us;q=0.7,en;q=0.3', 'Accept-Charset: ISO-8859-2,utf-8;q=0.7,*;q=0.7',
            'Content-Type: application/x-www-form-urlencoded']
-
+        
     def getPages(self, html):
         return [] + re.findall(
             '<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*, [a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\);" class="">[\s]*([0-9]*)',
@@ -330,9 +340,9 @@ class PrDlCrawl(PrDl):
                     title = titles[x]
                     description = descriptions[x]
                     title = self.fillEmptyTitle(title, url, html)
-                    title = urllib2.unquote(title)
+                    title = urllib.parse.unquote(title)
                     if title.find('.mp3') > -1:
-                        title = urllib2.unquote(description);
+                        title = urllib.parse.unquote(description);
                     fname = title
                     title = title.replace('&quot;', '"')
                     title = title.replace('""', '"')
@@ -362,7 +372,7 @@ class PrDlCrawl(PrDl):
 
     def start(self):
         self.drawSeparator('#')
-        print "Analizowany url: " + self.url
+        print("Analizowany url: {}".format(self.url))
         html = self.getWebPageContent(self.url)
         links = self.getLinks(html)
         titles = self.getTitles(html)
@@ -383,10 +393,3 @@ class PrDlCrawl(PrDl):
             a += 1
         self.drawSeparator('#')
 
-
-class PageDownloader:
-    def __init__(self):
-        self.contents = ''
-
-    def body_callback(self, buf):
-        self.contents = self.contents + buf

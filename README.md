@@ -1,6 +1,8 @@
 PR-DL: Polskie Radio DownLoader
 ==
 
+Documentation is only in polish here - beacause Polish Radio is in polish :-)
+
 Proste pobieranie podkastów z serwisu internetowego Polskiego Radia (polskieradio.pl).
 
 Instalacja:
@@ -19,6 +21,13 @@ Opcjonalny parametr -t pozwala zaakceptować wszystkie pliki z góry.
 
 Przykład:
 ====
+
+Aby pobrać wskazaną audycję należy wykonac komendę np.:
+
+    prdl https://www.polskieradio.pl/10/5566/Artykul/1780232
+
+Niestety przykłady poniżej nie działają poz mianach w API Polskiego Radia:
+======
 
 Aby pobrać wszystkie podkasty z pierwszej strony "Klubu Ludzi Ciekawych Wszystkiego" wpisujemy:
     
@@ -39,14 +48,17 @@ lub z -f na końcu dla szukania w tytułach:
 Znane błędy:
 ====
 
-- po dość głębokim refactorze nie wszystko jeszcze działa jak powinno,
-- podcasty się ściągają, ale np. skrypt znajduje tylko pierwszy, zamiast kilku które są na stronie,
-- nie uwzględniana jest paginacja,
-- coś jest nie halo z zapisem miniatur.
+- działa jedynie pobieranie 
 
 Plany:
 ====
 
 Będę starał się skrypt utrzymywać i rozwijać, gdyż sam z niego regularnie korzystam.
 
-Mimo pewnych (ekhm...) zmian w Polskim Radiu, nadal pojawia się tam sporo wartościowego contentu... który wystarczy tylko odpowiednio odsiać... ;-) 
+Mimo pewnych (ekhm...) zmian w Polskim Radiu, nadal pojawia się tam sporo wartościowego contentu... który wystarczy tylko odpowiednio odsiać... ;-)
+
+Historia wersji:
+====
+
+- 0.4
+- 0.5 - przejście na python3

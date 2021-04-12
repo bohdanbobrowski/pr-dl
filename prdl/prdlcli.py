@@ -1,24 +1,31 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from prdl import PrDlCrawl, PrDlSearch
+from prdl.prdl import PrDlCrawl, PrDlSearch
 import sys
+
 
 def checkCommandArcguments():
     if len(sys.argv) > 1:
         return True
     return False
 
-def checkValidUrl():
-    if sys.argv[1].find("https://www.polskieradio.pl") == 0 or sys.argv[1].find("http://www.polskieradio.pl") == 0:
-        return True
+def checkValidUrl(arg):
+    urls = [
+        "https://polskieradio24.pl",
+        "https://www.polskieradio.pl",
+        "http://www.polskieradio.pl"
+    ]
+    for url in urls:
+        if arg.find(url) == 0:
+            return True
     return False
 
 def printHelp():
-    print "PRDL - Polskie Radio Downloader"
-    print ""
-    print "python pr-dl-cli.pl [url] [-t] [-f]"
-    print ""
+    print("PRDL - Polskie Radio Downloader")
+    print("")
+    print("python pr-dl-cli.pl [url] [-t] [-f]")
+    print("")
 
 def main():
     if checkCommandArcguments():
@@ -28,9 +35,10 @@ def main():
             SAVE_ALL = True
         if '-f' in sys.argv or '-F' in sys.argv:
             FORCED_SEARCH = True
-        if checkValidUrl():
+        if checkValidUrl(sys.argv[1]):
             prdl = PrDlCrawl(sys.argv[1], SAVE_ALL)
         else:
+            print("Niestety poz mianach w API wyszukiwanie plików nie działa w tej wersji! :-(")
             prdl = PrDlSearch(sys.argv[1], SAVE_ALL, FORCED_SEARCH)
         prdl.start()
     else:

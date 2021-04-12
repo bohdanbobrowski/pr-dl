@@ -6,7 +6,7 @@ from setuptools import setup
 
 setup(
     name='pr-dl',
-    version='0.4',
+    version='0.5',
     description="Polish Radio Downloader",
     url="https://github.com/bohdanbobrowski/pr-dl",
     author="Bohdan Bobrowski",
@@ -16,9 +16,9 @@ setup(
         "prdl"
     ],
     install_requires=[
-        "eyed3==0.8.12",
+        "eyed3",
         "mutagen",
-        "slugify",
+        "python-slugify",
         "pycurl",
         "pillow",
         "clint",
