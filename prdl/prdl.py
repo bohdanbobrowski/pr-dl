@@ -18,6 +18,7 @@ import json
 from clint.textui import puts, colored
 from PIL import Image
 from bs4 import BeautifulSoup
+from lxml.html.soupparser import fromstring
 
 
 class PrDlPodcast(object):
@@ -179,7 +180,7 @@ class PrDl(object):
         puts(colored.white('Tytuł: ' + title, bold=True))
         puts(colored.white('Link: ' + url))
         puts(colored.white('Plik: ' + podcast.file_name))
-        if thumb != "":
+        if thumb:
             puts(colored.white('Miniaturka: ' + thumb))
         if (os.path.isfile(podcast.file_name)):
             print("[!] Plik o tej nazwie istnieje w katalogu docelowym")
@@ -303,12 +304,12 @@ class PrDlCrawl(PrDl):
         )
         return descr
 
-    def getThumbnails(self, html):
-        regex = 'id="imgArticleMain" src=.([^"\']*)'
-        thumbs = re.findall(regex, html)
+    def getThumbnails(self, html_tree):
+        thumbs = html_tree.xpath("//img[@id='imgArticleMain']")
         result = []
-        for thumb in thumbs:
-            result.append('https:' + thumb)
+        for t in thumbs:
+            result.append('https:'+t.attrib.get('src'))
+        print(result)
         return result
 
     def fillEmptyTitle(self, title, url, html):
@@ -324,6 +325,23 @@ class PrDlCrawl(PrDl):
                 title = re.search("<title>([^<^>]*)</title>", html).group(1)
                 title = title.strip() + " " + podcast_id
         return title
+
+    def getFilename(self, title):
+        fname = title
+        title = title.replace('&quot;', '"')
+        title = title.replace('""', '"')
+        fname = fname.replace('&quot;', '')
+        fname = fname.replace('?', '')
+        fname = fname.replace('(', '')
+        fname = fname.replace(')', '')
+        fname = fname.replace(':', '_')
+        fname = fname.replace(' ', '_')
+        fname = fname.replace('/', '_')
+        fname = fname.replace('"', '')
+        fname = fname.replace('_-_', '-')
+        fname = fname.replace('_-_', '-')
+        fname = fname.replace('_-_', '-')
+        return fname
 
     def getDownloadsList(self, links, titles, thumbnails, descriptions, html):
         downloads_list = []
@@ -342,21 +360,8 @@ class PrDlCrawl(PrDl):
                     title = self.fillEmptyTitle(title, url, html)
                     title = urllib.parse.unquote(title)
                     if title.find('.mp3') > -1:
-                        title = urllib.parse.unquote(description);
-                    fname = title
-                    title = title.replace('&quot;', '"')
-                    title = title.replace('""', '"')
-                    fname = fname.replace('&quot;', '')
-                    fname = fname.replace('?', '')
-                    fname = fname.replace('(', '')
-                    fname = fname.replace(')', '')
-                    fname = fname.replace(':', '_')
-                    fname = fname.replace(' ', '_')
-                    fname = fname.replace('/', '_')
-                    fname = fname.replace('"', '')
-                    fname = fname.replace('_-_', '-')
-                    fname = fname.replace('_-_', '-')
-                    fname = fname.replace('_-_', '-')
+                        title = urllib.parse.unquote(description)
+                    fname = self.getFilename(title)
                     row = {
                         'url': url,
                         'title': title,
@@ -370,18 +375,37 @@ class PrDlCrawl(PrDl):
                     downloads_list.append(row)
         return downloads_list
 
+    def getPodcasts(self, html_dom):
+        podcast = html_dom.xpath("//span[@class='play pr-media-play']")
+        result = []
+        for p in podcast:
+            pdata_media= json.loads(p.attrib.get('data-media'))
+            title = urllib.parse.unquote(pdata_media['desc'])
+            row = {
+                'url': "https:"+pdata_media['file'],
+                'title': title,
+                'description': title,
+                'fname': self.getFilename(title),
+                'thumb': None
+            }
+            result.append(row)
+        return result
+
     def start(self):
         self.drawSeparator('#')
         print("Analizowany url: {}".format(self.url))
         html = self.getWebPageContent(self.url)
+        html_dom = fromstring(html)
+        # 1. Old way
         links = self.getLinks(html)
         titles = self.getTitles(html)
         descriptions = self.getDescriptions(html)
+        # 2. Additional way
         if (len(links) == 0):
             links = re.findall('"file":"([^"]*)"', html)
             titles = re.findall('"title":"([^"]*)"', html)
-        thumbnails = self.getThumbnails(html)
-        downloads_list = self.getDownloadsList(links, titles, thumbnails, descriptions, html)
+        thumbnails = self.getThumbnails(html_dom)
+        downloads_list = self.getDownloadsList(links, titles, thumbnails, descriptions, html) + self.getPodcasts(html_dom)
         self.drawSeparator()
         a = 1
         for d in downloads_list:

@@ -5,6 +5,8 @@ Documentation is only in polish here - beacause Polish Radio is in polish :-)
 
 Proste pobieranie podkastów z serwisu internetowego Polskiego Radia (polskieradio.pl).
 
+Skrypt powstawał przez lata. Był pisany lewą nogą i wymagałby srogiego refaktoru. Jak widzę niektóre jego elementy to się za głowę łapię! W zasadzie jedyną jego zaletą jest to, że jako tako działa.
+
 Instalacja:
 ====
 
