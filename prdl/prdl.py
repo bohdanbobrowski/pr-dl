@@ -223,7 +223,7 @@ class PrDlSearch(PrDl):
             if self.forced_search:
                 files_after_forced_search = []
                 for f in files_on_page:
-                    if f['title'].lower() in self.phrase or f['description'].lower() in self.phrase:
+                    if f['title'].lower() in self.phrase:
                         files_after_forced_search.append(f)
                 files = files + files_after_forced_search
             else:
