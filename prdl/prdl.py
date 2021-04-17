@@ -231,7 +231,7 @@ class PrDlSearch(PrDl):
         return files
 
     def _get_search_url(self, page =1):
-        search_url = 'https://portalsearch.polskieradio.pl/api/search?pageSize=50&page=' + str(page) + '&query=%' + urllib.parse.quote(self.phrase) + '%22'
+        search_url = 'https://portalsearch.polskieradio.pl/api/search?pageSize=50&page=' + str(page) + '&query=%' + urllib.parse.quote(self.phrase.replace(" ", "+")) + '%22'
         print("Pobieram: {}".format(search_url))
         return search_url
 
@@ -374,16 +374,20 @@ class PrDlCrawl(PrDl):
         podcast = html_dom.xpath("//span[@class='play pr-media-play']")
         result = []
         for p in podcast:
-            pdata_media= json.loads(p.attrib.get('data-media'))
-            title = urllib.parse.unquote(pdata_media['desc'])
-            row = {
-                'url': "https:"+pdata_media['file'],
-                'title': title,
-                'description': title,
-                'fname': self.getFilename(title),
-                'thumb': None
-            }
-            result.append(row)
+            try:
+                pdata_media= json.loads(p.attrib.get('data-media'))
+                title = urllib.parse.unquote(pdata_media['desc'])
+                row = {
+                    'url': "https:"+pdata_media['file'],
+                    'title': title,
+                    'description': title,
+                    'fname': self.getFilename(title),
+                    'thumb': None
+                }
+                result.append(row)
+            except Exception as e:
+                print(p.attrib.get('data-media'))
+                print(e)
         return result
 
     def getPodcastsList(self):
