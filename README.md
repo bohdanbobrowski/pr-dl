@@ -5,7 +5,7 @@ Documentation is only in polish here - beacause Polish Radio is in polish :-)
 
 Proste pobieranie podkastów z serwisu internetowego Polskiego Radia (polskieradio.pl).
 
-Skrypt powstawał przez lata. Był pisany lewą nogą i wymagałby srogiego refaktoru. Jak widzę niektóre jego elementy to się za głowę łapię! W zasadzie jedyną jego zaletą jest to, że jako tako działa.
+Skrypt powstawał przez lata. Był pisany lewą nogą i wymagałby srogiego refaktoru. Jak widzę niektóre jego elementy to się za głowę łapię! W zasadzie jedyną jego zaletą jest to, że jako-tako działa.
 
 Instalacja:
 ====
@@ -62,5 +62,6 @@ Mimo pewnych (ekhm...) zmian w Polskim Radiu, nadal pojawia się tam sporo warto
 Historia wersji:
 ====
 
-- 0.4
-- 0.5 - przejście na python3
+- 0.5
+- 0.6 - przejście na python3
+- 0.7 - szukanie działa znowu!

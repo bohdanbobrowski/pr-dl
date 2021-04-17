@@ -38,7 +38,6 @@ def main():
         if checkValidUrl(sys.argv[1]):
             prdl = PrDlCrawl(sys.argv[1], SAVE_ALL)
         else:
-            print("Niestety poz mianach w API wyszukiwanie plików nie działa w tej wersji! :-(")
             prdl = PrDlSearch(sys.argv[1], SAVE_ALL, FORCED_SEARCH)
         prdl.start()
     else:

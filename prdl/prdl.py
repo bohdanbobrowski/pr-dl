@@ -51,12 +51,15 @@ class PrDlPodcast(object):
     def setThumbnailFileName(self):
         if self.thumbnail_url:
             expr = self.thumbnail_url.split(".")[-1]
+            if expr == 'file':
+                expr = 'jpg'
             self.thumbnail_mime = 'image/jpeg'
             self.thumbnail_delete_after = True
             self.thumbnail_file_name = self.url_hash + "." + expr
         else:
             self.thumbnail_delete_after = False
             self.thumbnail_file_name = self.thumbnail_default_fn
+        
 
     def getDefaultThumbnail(self):
         self.thumbnail_mime = 'image/jpg'
@@ -127,8 +130,7 @@ class PrDlPodcast(object):
 
 class PrDl(object):
     def __init__(self, phrase, save_all = False, forced_search = False):
-        self.phrase = phrase
-        self.search_str = phrase.upper()
+        self.phrase = phrase.lower()
         self.forced_search = forced_search
         self.save_all = save_all
         self.headers = None
@@ -191,6 +193,13 @@ class PrDl(object):
                 podcast.downloadThumbnail()
                 podcast.addThumbnail()
 
+    def downloadPodcast(self, podcast, counter=None, length=None):
+        if len(podcast['title']) == 0:
+            podcast['title'] = podcast['url'].replace('.mp3', '')
+        podcast['url'] = podcast['url'].replace('.mp3.mp3', '.mp3')
+        self.downloadPodcastFile(podcast['url'], podcast['title'], podcast['description'], counter, length, podcast['thumb'])
+        self.drawSeparator()
+
     def getWebPageContent(self, url):
         response = requests.get(url)
         return response.text
@@ -198,64 +207,51 @@ class PrDl(object):
 
 class PrDlSearch(PrDl):
 
-    def getFiles(self, response):
-        files = []
-        files_dodane = []
-        types = {}
+    def getFiles(self, results):
         # Najpierw szukam w responseach plików dźwiekowych
-        for w in response:
-            if w['type'] in types:
-                types[w['type']] = types[w['type']] + 1
+        files = []
+        for r in results:
+            crawl = PrDlCrawl("https://www.polskieradio.pl{}".format(r['url']), self.save_all)
+            files_on_page = crawl.getPodcastsList()
+            if r['image']:
+                default_thumb = "https:{}".format(r['image'])
+                i = 0
+                while i < len(files_on_page):
+                    if not files_on_page[i]['thumb']:
+                        files_on_page[i]['thumb'] = default_thumb
+                    i += 1
+            if self.forced_search:
+                files_after_forced_search = []
+                for f in files_on_page:
+                    if f['title'].lower() in self.phrase or f['description'].lower() in self.phrase:
+                        files_after_forced_search.append(f)
+                files = files + files_after_forced_search
             else:
-                types[w['type']] = 1
-            if 'files' in w:
-                print(w)
-                for file in w['files']:
-                    if file['name'] not in files_dodane and file['type'] == 'Plik dźwiękowy':
-                        file['thumbnail_url'] = w['thumbnail_url']
-                        file['lead'] = w['lead']
-                        files.append(file)
-            if w['type'] != 'Article':
-                print(w)
-        print(types)
-        # "Wzmocnione" szukanie - akceptuj tylko files dźwiekowe które w tytule mają szukaną frazę
-        if self.forced_search:
-            files_checked = []
-            for p in files:
-                p['description'] = p['description']
-                if len(p['description']) == 0:
-                    p['description'] = p['name'].replace('.mp3', '')
-                description = p['description'].upper()
-                lead = p['lead'].upper()
-                if self.search_str in description or self.search_str in lead:
-                    files_checked.append(p)
-            files = files_checked
+                files = files + files_on_page
         return files
 
     def _get_search_url(self, page =1):
-        # search_url = 'http://apipr.polskieradio.pl/api/elasticArticles?sort_by=date&sort_order=desc&offset=0&limit=500&query=' + urllib.quote(self.phrase)
-        search_url = 'https://portalsearch.polskieradio.pl/api/search?page=' + str(page) + '&query=%' + urllib.parse.quote(self.phrase) + '%22'
+        search_url = 'https://portalsearch.polskieradio.pl/api/search?pageSize=50&page=' + str(page) + '&query=%' + urllib.parse.quote(self.phrase) + '%22'
         print("Pobieram: {}".format(search_url))
         return search_url
 
+    def downloadPodcastsList(self, podcasts):
+        a = 1
+        for p in podcasts:
+            self.downloadPodcast(p, a, len(podcasts))
+            a += 1
+
     def start(self):
-        results = []
         response = json.loads(urllib.request.urlopen(self._get_search_url()).read())
-        results = results + response['results']
         pages = round(int(response['count']) / int(response['pageSize']))
+        podcasts = self.getFiles(response['results'])
+        self.downloadPodcastsList(podcasts)
         if pages > 1:
             for p in range(2, pages):
+                print("Strona {} z {}:".format(p, pages))
                 response = json.loads(urllib.request.urlopen(self._get_search_url(p)).read())
-                results = results + response['results']
-        a = 1
-        for p in self.getFiles(results):
-            p['description'] = p['description'].encode('utf-8').strip()
-            if len(p['description']) == 0:
-                p['description'] = p['name'].replace('.mp3', '').encode('utf-8')
-            p['path'] = p['path'].replace('.mp3.mp3', '.mp3')
-            self.downloadPodcastFile(p['path'], p['description'], p['lead'], a, len(files), p['thumbnail_url'])
-            self.drawSeparator()
-            a += 1
+                podcasts = self.getFiles(response['results'])
+                self.downloadPodcastsList(podcasts)
 
 
 class PrDlCrawl(PrDl):
@@ -309,7 +305,6 @@ class PrDlCrawl(PrDl):
         result = []
         for t in thumbs:
             result.append('https:'+t.attrib.get('src'))
-        print(result)
         return result
 
     def fillEmptyTitle(self, title, url, html):
@@ -391,29 +386,25 @@ class PrDlCrawl(PrDl):
             result.append(row)
         return result
 
-    def start(self):
-        self.drawSeparator('#')
+    def getPodcastsList(self):
         print("Analizowany url: {}".format(self.url))
         html = self.getWebPageContent(self.url)
         html_dom = fromstring(html)
-        # 1. Old way
         links = self.getLinks(html)
         titles = self.getTitles(html)
         descriptions = self.getDescriptions(html)
-        # 2. Additional way
         if (len(links) == 0):
             links = re.findall('"file":"([^"]*)"', html)
             titles = re.findall('"title":"([^"]*)"', html)
         thumbnails = self.getThumbnails(html_dom)
         downloads_list = self.getDownloadsList(links, titles, thumbnails, descriptions, html) + self.getPodcasts(html_dom)
-        self.drawSeparator()
+        return downloads_list
+
+    def start(self):
+        podcasts_list = self.getPodcastsList()
         a = 1
-        for d in downloads_list:
-            if len(d['title']) == 0:
-                d['title'] = d['url'].replace('.mp3', '')
-            d['url'] = d['url'].replace('.mp3.mp3', '.mp3')
-            self.downloadPodcastFile(d['url'], d['title'], d['description'], a, len(downloads_list), d['thumb'])
-            self.drawSeparator()
+        for podcast in podcasts_list:
+            self.downloadPodcast(podcast, a, len(podcasts_list))
             a += 1
         self.drawSeparator('#')
 
