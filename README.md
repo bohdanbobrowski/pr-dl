@@ -26,38 +26,25 @@ Przykład:
 
 Aby pobrać wskazaną audycję należy wykonac komendę np.:
 
-    prdl https://www.polskieradio.pl/10/5566/Artykul/1780232
+    prdl https://www.polskieradio.pl/8/755/Artykul/426557
 
-Niestety przykłady poniżej nie działają poz mianach w API Polskiego Radia:
-======
-
-Aby pobrać wszystkie podkasty z pierwszej strony "Klubu Ludzi Ciekawych Wszystkiego" wpisujemy:
-    
-    prdl https://www.polskieradio.pl/8/Audycja/7298 -t
-
-"Klub Trójki" pobieramy tak:
-    
-    prdl https://www.polskieradio.pl/9/Audycja/7422 -t
 
 Aby wyszukać słowo lub frazę w wyszukiwarce Polskiego Radia skrypt odpalamy tak:
     
     prdl Wańkowicz
 
-lub z -f na końcu dla szukania w tytułach:
+lub z -f na końcu dla "wzmocnionego" szukania w tytułach (wyszukiwarka PR niestety wyrzuca całą masę chłamu):
     
-    prdl Sergiusz\ Piasecki -f
+    prdl "Sergiusz Piasecki" -f
 
-Znane błędy:
-====
-
-- działa jedynie pobieranie 
+parametr -t powoduje że wszystkie podcasty zostaną pobrane bez pytania o zgodę:
 
 Plany:
 ====
 
 Będę starał się skrypt utrzymywać i rozwijać, gdyż sam z niego regularnie korzystam.
 
-Mimo pewnych (ekhm...) zmian w Polskim Radiu, nadal pojawia się tam sporo wartościowego contentu... który wystarczy tylko odpowiednio odsiać... ;-)
+Mimo pewnych (nie koniecznie) zmian w Polskim Radiu, nadal pojawia się tam sporo wartościowego contentu... który wystarczy tylko odpowiednio odsiać... ;-)
 
 Historia wersji:
 ====
@@ -65,3 +52,4 @@ Historia wersji:
 - 0.5
 - 0.6 - przejście na python3
 - 0.7 - szukanie działa znowu!
+- 0.8 - drobny refactor, poprawione pobieranie

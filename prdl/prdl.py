@@ -17,34 +17,37 @@ import urllib.request
 import json
 from clint.textui import puts, colored
 from PIL import Image
-from bs4 import BeautifulSoup
-from lxml.html.soupparser import fromstring
+from lxml import etree
 
 
 class PrDlPodcast(object):
-    def __init__(self, url, title, description='', track_number = 0, thumbnail_url=False):
-        self.url = url
-        self.title = title
-        self.url_hash = self.getUrlHash()
-        self.description = BeautifulSoup(description).get_text()
+    def __init__(self, podcast, track_number = None):
+        self.url = podcast['url']
+        self.uid = podcast['uid']
+        self.article_url = podcast['article_url']
+        self.title = podcast['title']
+        self.url_hash = self._getUrlHash()
+        self.description = podcast['description']
         self.file_name = self.getFileName()
         self.file_size = 0
-        self.thumbnail_url = thumbnail_url
+        self.thumbnail_url = podcast['thumb']
         self.thumbnail_delete_after = False
         self.thumbnail_default_fn = self.getDefaultThumbnail()
         self.setThumbnailFileName()
         self.track_number = track_number
 
-    def getUrlHash(self):
-        url_hash = hashlib.md5(self.url.encode("utf-8"))
-        return str(url_hash.hexdigest()[0:20])
+    def _getUrlHash(self):
+        url_hash = hashlib.md5(self.url.encode("utf-8")).hexdigest()
+        return str(url_hash[0:20])
 
-    def getFileName(self):
+    def getFileName(self, suffix=''):
         file_name = slugify(self.title.replace('ł', 'l').replace('Ł', 'L'))
         if len(file_name) > 100:
-            file_name = file_name[0:97] + "..."
+            file_name = file_name[0:100]
         if len(file_name) == 0:
-            file_name = self.url_hash + ".mp3"
+            file_name = self.url_hash
+        if suffix:
+            file_name = file_name + "_" + str(suffix)
         file_name = file_name + ".mp3"
         return file_name
 
@@ -86,46 +89,55 @@ class PrDlPodcast(object):
 
     def addThumbnail(self):
         if (os.path.isfile(self.file_name)):
-            audio = MP3(self.file_name, ID3=ID3)
             try:
-                audio.add_tags()
-            except error:
-                pass
-            if (os.path.isfile(self.thumbnail_file_name)):
-                thumbf = open(self.thumbnail_file_name, 'rb')
-                audio.tags.add(
-                    APIC(
-                        encoding=3,
-                        mime=self.thumbnail_mime,
-                        type=3,
-                        desc='Cover',
-                        data=thumbf.read()
+                audio = MP3(self.file_name, ID3=ID3)
+                try:
+                    audio.add_tags()
+                except Exception as e:
+                    print(e)
+                if (os.path.isfile(self.thumbnail_file_name)):
+                    thumbf = open(self.thumbnail_file_name, 'rb')
+                    audio.tags.add(
+                        APIC(
+                            encoding=3,
+                            mime=self.thumbnail_mime,
+                            type=3,
+                            desc='Cover',
+                            data=thumbf.read()
+                        )
                     )
-                )
-                audio.save()
-                if self.thumbnail_delete_after:
-                    os.remove(self.thumbnail_file_name)
+                    audio.save()
+                    if self.thumbnail_delete_after:
+                        os.remove(self.thumbnail_file_name)
+            except Exception as e:
+                print(e)
 
     def id3tag(self):
         if (os.path.isfile(self.file_name)):
-            try:
-                audiofile = eyed3.load(self.file_name)
+            audiofile = eyed3.load(self.file_name)
+            if audiofile:
                 if audiofile.tag is None:
                     audiofile.tag = eyed3.id3.Tag()
                     audiofile.tag.file_info = eyed3.id3.FileInfo(self.file_name)
-                comments = self.description +"\n\n"
-                comments += "Url pliku mp3: " + self.url + "\n\n"
-                audiofile.tag.comments.set(
-                    comments + "Pobrane przy pomocy skryptu https://github.com/bohdanbobrowski/pr-dl")
+                comments = "{}\nUrl artykułu: {}\nUrl pliku mp3: {}\n\nPobrane przy pomocy skryptu https://github.com/bohdanbobrowski/pr-dl".format(
+                    self.description,
+                    self.article_url,
+                    self.url
+                )
+                audiofile.tag.comments.set(comments)
                 audiofile.tag.artist = "Polskie Radio"
                 audiofile.tag.album = "polskieradio.pl"
                 audiofile.tag.genre = "Speech"
                 audiofile.tag.title = self.title
                 audiofile.tag.audio_file_url = self.url
-                audiofile.tag.track_num = self.track_number
-                audiofile.tag.save(version=ID3_V2_4, encoding='utf-8')
-            except Exception as error:
-                print(error)
+                if self.track_number:
+                    audiofile.tag.track_num = self.track_number
+                audiofile.tag.save(version=eyed3.id3.ID3_DEFAULT_VERSION,encoding='utf-8')
+            else:
+                if audiofile is None:
+                    os.remove(self.file_name)
+                    if os.path.isfile(self.thumbnail_file_name):
+                        os.remove(self.thumbnail_file_name)
 
 
 class PrDl(object):
@@ -133,7 +145,6 @@ class PrDl(object):
         self.phrase = phrase.lower()
         self.forced_search = forced_search
         self.save_all = save_all
-        self.headers = None
 
     def getKey(self):
         if os.name == 'nt':
@@ -176,28 +187,24 @@ class PrDl(object):
         abs_path_to_resource = os.path.abspath(rel_path_to_resource)
         return abs_path_to_resource
 
-    def downloadPodcastFile(self, url, title, description='', current=0, total=0, thumb=""):
-        podcast = PrDlPodcast(url, title, description='', track_number=current, thumbnail_url=thumb)
+    def downloadPodcast(self, podcast, current=0, total=0):
+        podcast = PrDlPodcast(podcast, track_number=current)
         puts(colored.blue('[' + str(current) + '/' + str(total) + ']'))
-        puts(colored.white('Tytuł: ' + title, bold=True))
-        puts(colored.white('Link: ' + url))
+        puts(colored.white('Tytuł: ' + podcast.title, bold=True))
+        puts(colored.white('Link: ' + podcast.url))
         puts(colored.white('Plik: ' + podcast.file_name))
-        if thumb:
-            puts(colored.white('Miniaturka: ' + thumb))
-        if (os.path.isfile(podcast.file_name)):
-            print("[!] Plik o tej nazwie istnieje w katalogu docelowym")
+        if podcast.thumbnail_url:
+            puts(colored.white('Miniaturka: ' + podcast.thumbnail_url))
+        x = 1
+        while os.path.isfile(podcast.file_name):
+            podcast.file_name = podcast.getFileName(x)
+            x += 1
         else:
             if (self.confirmSave(self.save_all) == 1):
-                download(url, './' + podcast.file_name)
+                download(podcast.url, './' + podcast.file_name)
                 podcast.id3tag()
                 podcast.downloadThumbnail()
                 podcast.addThumbnail()
-
-    def downloadPodcast(self, podcast, counter=None, length=None):
-        if len(podcast['title']) == 0:
-            podcast['title'] = podcast['url'].replace('.mp3', '')
-        podcast['url'] = podcast['url'].replace('.mp3.mp3', '.mp3')
-        self.downloadPodcastFile(podcast['url'], podcast['title'], podcast['description'], counter, length, podcast['thumb'])
         self.drawSeparator()
 
     def getWebPageContent(self, url):
@@ -209,25 +216,18 @@ class PrDlSearch(PrDl):
 
     def getFiles(self, results):
         # Najpierw szukam w responseach plików dźwiekowych
-        files = []
+        files = {}
         for r in results:
             crawl = PrDlCrawl("https://www.polskieradio.pl{}".format(r['url']), self.save_all)
             files_on_page = crawl.getPodcastsList()
             if r['image']:
                 default_thumb = "https:{}".format(r['image'])
-                i = 0
-                while i < len(files_on_page):
-                    if not files_on_page[i]['thumb']:
-                        files_on_page[i]['thumb'] = default_thumb
-                    i += 1
-            if self.forced_search:
-                files_after_forced_search = []
                 for f in files_on_page:
-                    if f['title'].lower() in self.phrase:
-                        files_after_forced_search.append(f)
-                files = files + files_after_forced_search
-            else:
-                files = files + files_on_page
+                    if not files_on_page[f]['thumb']:
+                        files_on_page[f]['thumb'] = default_thumb
+            for f in files_on_page:
+                if not self.forced_search or self.phrase in files_on_page[f]['title'].lower():
+                    files[f] = files_on_page[f]
         return files
 
     def _get_search_url(self, page =1):
@@ -237,8 +237,8 @@ class PrDlSearch(PrDl):
 
     def downloadPodcastsList(self, podcasts):
         a = 1
-        for p in podcasts:
-            self.downloadPodcast(p, a, len(podcasts))
+        for k in podcasts:
+            self.downloadPodcast(podcasts[k], a, len(podcasts))
             a += 1
 
     def start(self):
@@ -258,157 +258,66 @@ class PrDlCrawl(PrDl):
     def __init__(self, url, save_all = False):
         self.url =  url
         self.save_all = save_all
-        self.headers = ['Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-           'Accept-Language: pl,en-us;q=0.7,en;q=0.3', 'Accept-Charset: ISO-8859-2,utf-8;q=0.7,*;q=0.7',
-           'Content-Type: application/x-www-form-urlencoded']
-        
-    def getPages(self, html):
-        return [] + re.findall(
-            '<a[a-z\="\s]*onclick="[a-zA-Z\_]*LoadTab\([0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*,[0-9\s]*, [a-z0-9&;,=\s]*[\s]*[a-zA-z\s]*&quot;, &quot;True&quot;,[0-9\s]*,[0-9\s\-]*[\', &quot;False&quot;\']*,[0-9\s]*\);" class="">[\s]*([0-9]*)',
-            html
-        )
-
-    def getLinks(self, html):
-        links = [] + re.findall(
-            'onclick="javascript:playFile\(\'[^\']*\',\'([^\']*)\',\'[^\']*\',\'[^\']*\',\'[^\']*\',\'1\',\'[^\']*\'\);',
-            html
-        )
-        links += re.findall(
-            '"file":"([^"]*)","provider":"audio","uid":"[^"]*","length":[0-9]*,"autostart":[a-z]*,"link":"[^"]*","title":"[^"]*"',
-            html
-        )
-        return links
-
-    def getTitles(self, html):
-        titles = [] + re.findall(
-            'onclick="javascript:playFile\(\'[^\']*\',\'[^\']*\',\'([^\']*)\',\'[^\']*\',\'[^\']*\',\'1\',\'[^\']*\'\);',
-            html
-        )
-        titles += re.findall(
-            '"file":"[^"]*","provider":"audio","uid":"[^"]*","length":[0-9]*,"autostart":[a-z]*,"link":"[^"]*","title":"([^"]*)"',
-            html
-        )
-        return titles
-
-    def getDescriptions(self, html):
-        descr = [] + re.findall(
-            'onclick="javascript:playFile\(\'[^\']*\',\'[^\']*\',\'([^\']*)\',\'[^\']*\',\'[^\']*\',\'1\',\'[^\']*\'\);',
-        html)
-        descr += re.findall(
-            '"file":"[^"]*","provider":"audio","uid":"[^"]*","length":[0-9]*,"autostart":[a-z]*,"link":"[^"]*","title":"[^"]*","desc":"([^"]*)"',
-            html
-        )
-        return descr
-
-    def getThumbnails(self, html_tree):
-        thumbs = html_tree.xpath("//img[@id='imgArticleMain']")
-        result = []
-        for t in thumbs:
-            result.append('https:'+t.attrib.get('src'))
-        return result
-
-    def fillEmptyTitle(self, title, url, html):
-        if title == '':
-            podcast_id = str(url.replace('http://static.polskieradio.pl/', '').replace('.mp3', ''))
-            if re.search(
-                    "playFile\('[0-9]*','" + podcast_id + "','','[0-9]*','[0-9a-zA-Z\/]*\,([^']*)",
-                    html):
-                title = re.search(
-                    "playFile\('[0-9]*','" + podcast_id + "','','[0-9]*','[0-9a-zA-Z\/]*\,([^']*)",
-                    html).group(1)
-            else:
-                title = re.search("<title>([^<^>]*)</title>", html).group(1)
-                title = title.strip() + " " + podcast_id
-        return title
 
     def getFilename(self, title):
         fname = title
         title = title.replace('&quot;', '"')
         title = title.replace('""', '"')
-        fname = fname.replace('&quot;', '')
-        fname = fname.replace('?', '')
-        fname = fname.replace('(', '')
-        fname = fname.replace(')', '')
-        fname = fname.replace(':', '_')
-        fname = fname.replace(' ', '_')
-        fname = fname.replace('/', '_')
-        fname = fname.replace('"', '')
-        fname = fname.replace('_-_', '-')
-        fname = fname.replace('_-_', '-')
-        fname = fname.replace('_-_', '-')
+        for x in ['&quot;','„','”','…','?','(',')']:
+            fname = fname.replace(x, '')
+        for y in [':',' ','/','"','.',',']:
+            fname = fname.replace(y, '_')
+        while '__' in fname:
+            fname = fname.replace('__', '_')
+        while '_-_' in fname:
+            fname = fname.replace('_-_', '-')
+        fname = fname.strip('_')
         return fname
 
-    def getDownloadsList(self, links, titles, thumbnails, descriptions, html):
-        downloads_list = []
-        added_links = []
-        if (len(links) == len(titles) and len(links) > 0):
-            for (x, y) in enumerate(links):
-                if links[x] not in added_links:
-                    url = links[x]
-                    added_links.append(url)
-                    if url.find('//static') > -1 and url.find('http://') == -1:
-                        url = 'http:' + url
-                    if url.find('http://static') == -1:
-                        url = 'http://static.polskieradio.pl/' + url + '.mp3'
-                    title = titles[x]
-                    description = descriptions[x]
-                    title = self.fillEmptyTitle(title, url, html)
-                    title = urllib.parse.unquote(title)
-                    if title.find('.mp3') > -1:
-                        title = urllib.parse.unquote(description)
-                    fname = self.getFilename(title)
-                    row = {
-                        'url': url,
-                        'title': title,
-                        'description': description,
-                        'fname': fname
-                    }
-                    try:
-                        row["thumb"] = thumbnails[(x/2)]
-                    except Exception:
-                        row["thumb"] = ""
-                    downloads_list.append(row)
-        return downloads_list
-
-    def getPodcasts(self, html_dom):
-        podcast = html_dom.xpath("//span[@class='play pr-media-play']")
-        result = []
-        for p in podcast:
+    def getPodcasts(self, html_dom, article_url = ''):
+        articles = html_dom.xpath("//article")
+        result = {}
+        for art in articles:
+            podcast = art.xpath(".//*[@data-media]")
             try:
-                pdata_media= json.loads(p.attrib.get('data-media'))
-                title = urllib.parse.unquote(pdata_media['desc'])
-                row = {
-                    'url': "https:"+pdata_media['file'],
-                    'title': title,
-                    'description': title,
-                    'fname': self.getFilename(title),
-                    'thumb': None
-                }
-                result.append(row)
-            except Exception as e:
-                print(p.attrib.get('data-media'))
-                print(e)
+                thumb = "https:"+art.xpath(".//img[contains(@class, 'NoRightBtn')]")[0].get("src")
+            except Exception:
+                thumb = None
+            for p in podcast:
+                try:
+                    pdata_media = json.loads(p.attrib.get('data-media'))
+                    uid = hashlib.md5(pdata_media['file'].encode('utf-8')).hexdigest()
+                    title = art.xpath(".//h1[contains(@class, 'title')]")[0].text.strip()
+                    if not title:
+                        title = art.xpath(".//h1[contains(@class, 'title')]/a")[0].text.strip()
+                    result[uid] = {
+                        'url': "https:" + pdata_media['file'],
+                        'uid': uid,
+                        'article_url': article_url,
+                        'title': title,
+                        'description': urllib.parse.unquote(pdata_media['desc']).strip(),
+                        'fname': self.getFilename(title),
+                        'thumb': thumb
+                    }
+                except Exception as e:
+                    print(p.attrib.get('data-media'))
+                    print(e)
         return result
 
     def getPodcastsList(self):
         print("Analizowany url: {}".format(self.url))
-        html = self.getWebPageContent(self.url)
-        html_dom = fromstring(html)
-        links = self.getLinks(html)
-        titles = self.getTitles(html)
-        descriptions = self.getDescriptions(html)
-        if (len(links) == 0):
-            links = re.findall('"file":"([^"]*)"', html)
-            titles = re.findall('"title":"([^"]*)"', html)
-        thumbnails = self.getThumbnails(html_dom)
-        downloads_list = self.getDownloadsList(links, titles, thumbnails, descriptions, html) + self.getPodcasts(html_dom)
+        downloads_list = []
+        try:
+            html = self.getWebPageContent(self.url)
+            downloads_list = self.getPodcasts(etree.HTML(html), self.url)
+        except Exception as e:
+            print(e)
         return downloads_list
 
     def start(self):
         podcasts_list = self.getPodcastsList()
         a = 1
-        for podcast in podcasts_list:
-            self.downloadPodcast(podcast, a, len(podcasts_list))
+        for k in podcasts_list:
+            self.downloadPodcast(podcasts_list[k], a, len(podcasts_list))
             a += 1
         self.drawSeparator('#')
-
