@@ -5,8 +5,8 @@ from prdl.prdl import PrDlCrawl, PrDlSearch
 import sys
 
 
-def checkCommandArcguments():
-    if len(sys.argv) > 1:
+def checkCommandArcguments(args):
+    if len(args) > 1:
         return True
     return False
 
@@ -27,18 +27,20 @@ def printHelp():
     print("python pr-dl-cli.pl [url] [-t] [-f]")
     print("")
 
-def main():
-    if checkCommandArcguments():
+def main(args = None):
+    if not args:
+        args = sys.argv
+    if checkCommandArcguments(args):
         SAVE_ALL = False
         FORCED_SEARCH =False
-        if '-t' in sys.argv or '-T' in sys.argv:
+        if '-t' in args or '-T' in args:
             SAVE_ALL = True
-        if '-f' in sys.argv or '-F' in sys.argv:
+        if '-f' in args or '-F' in args:
             FORCED_SEARCH = True
-        if checkValidUrl(sys.argv[1]):
-            prdl = PrDlCrawl(sys.argv[1], SAVE_ALL)
+        if checkValidUrl(args[1]):
+            prdl = PrDlCrawl(args[1], SAVE_ALL)
         else:
-            prdl = PrDlSearch(sys.argv[1], SAVE_ALL, FORCED_SEARCH)
+            prdl = PrDlSearch(args[1], SAVE_ALL, FORCED_SEARCH)
         prdl.start()
     else:
         printHelp()

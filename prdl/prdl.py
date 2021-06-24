@@ -19,9 +19,17 @@ import validators
 from clint.textui import puts, colored
 from PIL import Image
 from lxml import etree
+import logging
 
 
-class PrDlPodcast(object):
+class PrDlLoggingClass(object):
+
+    def __init__(self):
+        self.log = logging.getLogger(__name__)
+
+
+class PrDlPodcast(PrDlLoggingClass):
+
     def __init__(self, podcast, track_number = None):
         self.url = podcast['url']
         self.uid = podcast['uid']
@@ -36,6 +44,7 @@ class PrDlPodcast(object):
         self.thumbnail_default_fn = self.getDefaultThumbnail()
         self.setThumbnailFileName()
         self.track_number = track_number
+        super().__init__()
 
     def _getUrlHash(self):
         url_hash = hashlib.md5(self.url.encode("utf-8")).hexdigest()
@@ -94,7 +103,7 @@ class PrDlPodcast(object):
                 try:
                     audio.add_tags()
                 except Exception as e:
-                    print(e)
+                    self.log.error(e)
                 if (os.path.isfile(self.thumbnail_file_name)):
                     thumbf = open(self.thumbnail_file_name, 'rb')
                     audio.tags.add(
@@ -110,7 +119,7 @@ class PrDlPodcast(object):
                     if self.thumbnail_delete_after:
                         os.remove(self.thumbnail_file_name)
             except Exception as e:
-                print(e)
+                self.log.error(e)
 
     def id3tag(self):
         if (os.path.isfile(self.file_name)):
@@ -140,11 +149,13 @@ class PrDlPodcast(object):
                         os.remove(self.thumbnail_file_name)
 
 
-class PrDl(object):
+class PrDl(PrDlLoggingClass):
+
     def __init__(self, phrase, save_all = False, forced_search = False):
         self.phrase = phrase.lower()
         self.forced_search = forced_search
         self.save_all = save_all
+        super().__init__()
 
     def getKey(self):
         if os.name == 'nt':
@@ -165,7 +176,7 @@ class PrDl(object):
         separator = ''
         for x in range(0, columns):
             separator = separator + sign
-        print(separator)
+        self.log.info(separator)
 
     def confirmSave(self, answer):
         if (answer == 1):
@@ -232,7 +243,7 @@ class PrDlSearch(PrDl):
 
     def _get_search_url(self, page =1):
         search_url = 'https://portalsearch.polskieradio.pl/api/search?pageSize=50&page=' + str(page) + '&query=%' + urllib.parse.quote(self.phrase.replace(" ", "+")) + '%22'
-        print("Pobieram: {}".format(search_url))
+        self.log.info("Pobieram: {}".format(search_url))
         return search_url
 
     def downloadPodcastsList(self, podcasts):
@@ -248,16 +259,18 @@ class PrDlSearch(PrDl):
         self.downloadPodcastsList(podcasts)
         if pages > 1:
             for p in range(2, pages):
-                print("Strona {} z {}:".format(p, pages))
+                self.log.info("Strona {} z {}:".format(p, pages))
                 response = json.loads(urllib.request.urlopen(self._get_search_url(p)).read())
                 podcasts = self.getFiles(response['results'])
                 self.downloadPodcastsList(podcasts)
 
 
 class PrDlCrawl(PrDl):
+
     def __init__(self, url, save_all = False):
         self.url =  url
         self.save_all = save_all
+        self.log = logging.getLogger(__name__)
 
     def getFilename(self, title):
         fname = title
@@ -292,10 +305,9 @@ class PrDlCrawl(PrDl):
                 thumb = html_dom.xpath(".//span[contains(@class, 'img')]")[0].get("style")
                 thumb = thumb.replace('background-image:url(', 'https:')
                 thumb = thumb.replace(');', '')
-                print(thumb)
             except Exception:
                 pass        
-        if validators.url(thumb):
+        if thumb and validators.url(thumb):
             return thumb
         else:
             return None
@@ -316,28 +328,31 @@ class PrDlCrawl(PrDl):
                             title = art.xpath(".//h1[contains(@class, 'title')]/a")[0].text.strip()
                     except Exception:
                         title = html_title + " - " + urllib.parse.unquote(pdata_media['title']).strip()                        
+                    try:
+                        description = urllib.parse.unquote(pdata_media['desc']).strip()
+                    except Exception:
+                        description = title
                     result[uid] = {
                         'url': "https:" + pdata_media['file'],
                         'uid': uid,
                         'article_url': article_url,
                         'title': title,
-                        'description': urllib.parse.unquote(pdata_media['desc']).strip(),
+                        'description': description,
                         'fname': self.getFilename(title),
                         'thumb': thumb
                     }
-                except Exception as e:
-                    print(p.attrib.get('data-media'))
-                    print(e)        
+                except Exception as e:                    
+                    self.log.error(e)        
         return result
 
     def getPodcastsList(self):
-        print("Analizowany url: {}".format(self.url))
+        self.log.info("Analizowany url: {}".format(self.url))
         downloads_list = []
         try:
             html = self.getWebPageContent(self.url)
             downloads_list = self.getPodcasts(etree.HTML(html), self.url)
         except Exception as e:
-            print(e)
+            self.log.error(e)
         return downloads_list
 
     def start(self):
