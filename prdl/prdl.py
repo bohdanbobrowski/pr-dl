@@ -15,6 +15,7 @@ import re
 import urllib
 import urllib.request
 import json
+import validators
 from clint.textui import puts, colored
 from PIL import Image
 from lxml import etree
@@ -63,7 +64,6 @@ class PrDlPodcast(object):
             self.thumbnail_delete_after = False
             self.thumbnail_file_name = self.thumbnail_default_fn
         
-
     def getDefaultThumbnail(self):
         self.thumbnail_mime = 'image/jpg'
         tpath = os.path.realpath(__file__).split('/')
@@ -274,22 +274,48 @@ class PrDlCrawl(PrDl):
         fname = fname.strip('_')
         return fname
 
-    def getPodcasts(self, html_dom, article_url = ''):
+    def getArticles(self, html_dom):
+        """ Get articles - web page parts, with attached podcasts
+        """
         articles = html_dom.xpath("//article")
-        result = {}
-        for art in articles:
-            podcast = art.xpath(".//*[@data-media]")
+        articles += html_dom.xpath("//div[contains(@class, 'atarticle')]")
+        return articles
+
+    def getThumb(self, html_dom, art):
+        thumb = None
+        try:
+            thumb = "https:"+art.xpath(".//img[contains(@class, 'NoRightBtn')]")[0].get("src")
+        except Exception:
+            pass
+        if thumb is None:
             try:
-                thumb = "https:"+art.xpath(".//img[contains(@class, 'NoRightBtn')]")[0].get("src")
+                thumb = html_dom.xpath(".//span[contains(@class, 'img')]")[0].get("style")
+                thumb = thumb.replace('background-image:url(', 'https:')
+                thumb = thumb.replace(');', '')
+                print(thumb)
             except Exception:
-                thumb = None
+                pass        
+        if validators.url(thumb):
+            return thumb
+        else:
+            return None
+
+    def getPodcasts(self, html_dom, article_url = ''):                
+        result = {}
+        html_title = html_dom.xpath("//title")[0].text.strip()
+        for art in self.getArticles(html_dom):
+            podcast = art.xpath(".//*[@data-media]")
+            thumb = self.getThumb(html_dom, art)
             for p in podcast:
                 try:
                     pdata_media = json.loads(p.attrib.get('data-media'))
                     uid = hashlib.md5(pdata_media['file'].encode('utf-8')).hexdigest()
-                    title = art.xpath(".//h1[contains(@class, 'title')]")[0].text.strip()
-                    if not title:
-                        title = art.xpath(".//h1[contains(@class, 'title')]/a")[0].text.strip()
+                    try:
+                        title = art.xpath(".//h1[contains(@class, 'title')]")[0].text.strip()
+                        if not title:
+                            title = art.xpath(".//h1[contains(@class, 'title')]/a")[0].text.strip()
+                    except Exception:
+                        title = html_title + " - " + urllib.parse.unquote(pdata_media['title']).strip()                        
                     result[uid] = {
                         'url': "https:" + pdata_media['file'],
                         'uid': uid,
@@ -301,7 +327,7 @@ class PrDlCrawl(PrDl):
                     }
                 except Exception as e:
                     print(p.attrib.get('data-media'))
-                    print(e)
+                    print(e)        
         return result
 
     def getPodcastsList(self):
