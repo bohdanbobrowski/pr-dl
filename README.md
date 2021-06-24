@@ -53,4 +53,4 @@ Historia wersji:
 - 0.6 - przejście na python3
 - 0.7 - szukanie działa znowu!
 - 0.8 - drobny refactor, poprawione pobieranie
-- 0.81 - odpowiedź na zgłoszone błędy: https://github.com/bohdanbobrowski/pr-dl/issues/3
+- 0.8.1 - odpowiedź na zgłoszone błędy: https://github.com/bohdanbobrowski/pr-dl/issues/3
