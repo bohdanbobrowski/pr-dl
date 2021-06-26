@@ -26,6 +26,12 @@ class PrDlLoggingClass(object):
 
     def __init__(self):
         self.log = logging.getLogger(__name__)
+        ch = logging.StreamHandler()
+        ch.setLevel(logging.INFO)
+        formatter = logging.Formatter('%(asctime)s [%(name)s] - %(levelname)s - %(message)s')
+        ch.setFormatter(formatter)
+        self.log.addHandler(ch)
+        self.log.debug("Logger zainicjowany")
 
 
 class PrDlPodcast(PrDlLoggingClass):
@@ -100,10 +106,6 @@ class PrDlPodcast(PrDlLoggingClass):
         if (os.path.isfile(self.file_name)):
             try:
                 audio = MP3(self.file_name, ID3=ID3)
-                try:
-                    audio.add_tags()
-                except Exception as e:
-                    self.log.error(e)
                 if (os.path.isfile(self.thumbnail_file_name)):
                     thumbf = open(self.thumbnail_file_name, 'rb')
                     audio.tags.add(
@@ -118,16 +120,15 @@ class PrDlPodcast(PrDlLoggingClass):
                     audio.save()
                     if self.thumbnail_delete_after:
                         os.remove(self.thumbnail_file_name)
-            except Exception as e:
+            except Exception as e:                
                 self.log.error(e)
 
     def id3tag(self):
         if (os.path.isfile(self.file_name)):
             audiofile = eyed3.load(self.file_name)
             if audiofile:
-                if audiofile.tag is None:
-                    audiofile.tag = eyed3.id3.Tag()
-                    audiofile.tag.file_info = eyed3.id3.FileInfo(self.file_name)
+                audiofile.tag = eyed3.id3.Tag()
+                audiofile.tag.file_info = eyed3.id3.FileInfo(self.file_name)
                 comments = "{}\nUrl artykułu: {}\nUrl pliku mp3: {}\n\nPobrane przy pomocy skryptu https://github.com/bohdanbobrowski/pr-dl".format(
                     self.description,
                     self.article_url,
@@ -170,14 +171,6 @@ class PrDl(PrDlLoggingClass):
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         return ch
 
-    def drawSeparator(self, sign='-'):
-        rows, columns = os.popen('stty size', 'r').read().split()
-        columns = int(columns)
-        separator = ''
-        for x in range(0, columns):
-            separator = separator + sign
-        self.log.info(separator)
-
     def confirmSave(self, answer):
         if (answer == 1):
             return 1
@@ -185,7 +178,7 @@ class PrDl(PrDlLoggingClass):
             puts(colored.red("Czy zapisać podcast? ([t]ak / [n]ie / [z]akoncz)"))
             key = self.getKey()
             if key == 'z' or key == 'Z':
-                self.drawSeparator('#')
+                self.log.info("Przerwano na polecenie użytkownika")
                 exit()
             if key == 't' or key == 'T':
                 return 1
@@ -199,6 +192,7 @@ class PrDl(PrDlLoggingClass):
         return abs_path_to_resource
 
     def downloadPodcast(self, podcast, current=0, total=0):
+        self.log.debug("Znaleziono podcast [{}/{}]: {}".format(current, podcast, podcast))
         podcast = PrDlPodcast(podcast, track_number=current)
         puts(colored.blue('[' + str(current) + '/' + str(total) + ']'))
         puts(colored.white('Tytuł: ' + podcast.title, bold=True))
@@ -216,7 +210,6 @@ class PrDl(PrDlLoggingClass):
                 podcast.id3tag()
                 podcast.downloadThumbnail()
                 podcast.addThumbnail()
-        self.drawSeparator()
 
     def getWebPageContent(self, url):
         response = requests.get(url)
@@ -271,6 +264,7 @@ class PrDlCrawl(PrDl):
         self.url =  url
         self.save_all = save_all
         self.log = logging.getLogger(__name__)
+        self.log.setLevel(logging.DEBUG)
 
     def getFilename(self, title):
         fname = title
@@ -361,4 +355,3 @@ class PrDlCrawl(PrDl):
         for k in podcasts_list:
             self.downloadPodcast(podcasts_list[k], a, len(podcasts_list))
             a += 1
-        self.drawSeparator('#')

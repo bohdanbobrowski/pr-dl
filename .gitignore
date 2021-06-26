@@ -7,3 +7,4 @@ __pycache__
 /.vscode
 /prdlcli_test.py
 *.mp3
+/*.jpg
