@@ -9,9 +9,7 @@ from mutagen.id3 import ID3, APIC, error
 import hashlib
 import os
 from slugify import slugify
-import pycurl
 import requests
-import re
 import urllib
 import urllib.request
 import json
