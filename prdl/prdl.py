@@ -68,6 +68,8 @@ class PrDlPodcast(PrDlLoggingClass):
     def setThumbnailFileName(self):
         if self.thumbnail_url:
             expr = self.thumbnail_url.split(".")[-1]
+            if expr.find("?"):
+                expr = expr.split("?")[0]
             if expr == 'file':
                 expr = 'jpg'
             self.thumbnail_mime = 'image/jpeg'
