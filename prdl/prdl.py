@@ -126,7 +126,7 @@ class PrDlPodcast(PrDlLoggingClass):
     def id3tag(self):
         if (os.path.isfile(self.file_name)):
             audiofile = eyed3.load(self.file_name)
-            if audiofile:
+            if audiofile:       
                 audiofile.tag = eyed3.id3.Tag()
                 audiofile.tag.file_info = eyed3.id3.FileInfo(self.file_name)
                 comments = "{}\nUrl artykułu: {}\nUrl pliku mp3: {}\n\nPobrane przy pomocy skryptu https://github.com/bohdanbobrowski/pr-dl".format(
