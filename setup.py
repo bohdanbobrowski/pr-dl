@@ -5,16 +5,14 @@
 from setuptools import setup
 
 setup(
-    name='pr-dl',
-    version='0.8.2',
+    name="pr-dl",
+    version="0.8.2",
     description="Polish Radio Downloader",
     url="https://github.com/bohdanbobrowski/pr-dl",
     author="Bohdan Bobrowski",
     author_email="bohdanbobrowski@gmail.com",
     license="MIT",
-    packages=[
-        "prdl"
-    ],
+    packages=["prdl"],
     install_requires=[
         "lxml",
         "eyed3",
@@ -24,17 +22,11 @@ setup(
         "pillow",
         "clint",
         "download",
-        "validators"
+        "validators",
     ],
     entry_points={
-        'console_scripts': [
-            'prdl = prdl.prdlcli:main'
-        ],
+        "console_scripts": ["prdl = prdl.prdlcli:main"],
     },
-    package_data={
-        'prdl': [
-            '*.jpg'
-        ]
-    },
-    include_package_data = True,
+    package_data={"prdl": ["*.jpg"]},
+    include_package_data=True,
 )
