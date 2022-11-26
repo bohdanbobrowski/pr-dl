@@ -12,7 +12,7 @@ idna==3.3
 lxml==4.9.1
 mutagen==1.45.1
 packaging==21.3
-Pillow==9.0.1
+Pillow==9.3.0
 pr-dl==0.8.2
 pycurl==7.44.1
 pyparsing==3.0.7
