@@ -1,5 +1,5 @@
 args==0.1.0
-certifi==2021.10.8
+certifi==2022.12.7
 charset-normalizer==2.0.11
 clint==0.5.1
 coverage==5.5
