@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from download import download
-import eyed3
-from eyed3.id3 import ID3_V2_4
-from eyed3.id3.frames import ImageFrame
 import hashlib
+import json
+import logging
 import os
-from slugify import slugify
-import requests
 import urllib
 import urllib.request
-import json
+
+import eyed3
+import requests
 import validators
-from clint.textui import puts, colored
 from PIL import Image
+from clint.textui import puts, colored
+from download import download
+from eyed3.id3 import ID3_V2_4
+from eyed3.id3.frames import ImageFrame
 from lxml import etree
-import logging
+from slugify import slugify
 
 
 class PrDlLoggingClass(object):
