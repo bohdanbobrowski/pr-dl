@@ -8,7 +8,7 @@ deprecation==2.1.0
 download==0.3.5
 eyed3==0.9.6
 filetype==1.0.10
-idna==3.3
+idna==3.7
 lxml==4.9.1
 packaging==21.3
 Pillow==10.2.0
