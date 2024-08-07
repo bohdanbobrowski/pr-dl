@@ -1,8 +1,0 @@
-clint==0.5.1
-download==0.3.5
-eyed3==0.9.7
-lxml==5.3.1
-Pillow==11.1.0
-python-slugify==8.0.4
-Requests==2.32.4
-validators==0.34.0
