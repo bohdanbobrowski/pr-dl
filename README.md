@@ -15,7 +15,7 @@ Instalacja:
 Jak użyć:
 ====
 
-    prdl [url] [-t] [-f]
+    prdl --help
 
 W miejsce parametru url wklejamy link do strony w serwisie Polskiego Radia, lub słowo lub frazę jaką chcemy wyszukać.
 
@@ -49,9 +49,10 @@ Mimo pewnych (nie koniecznie) zmian w Polskim Radiu, nadal pojawia się tam spor
 Historia wersji:
 ====
 
-- 0.5
-- 0.6 - przejście na python3
-- 0.7 - szukanie działa znowu!
-- 0.8 - drobny refactor, poprawione pobieranie
+- 0.9 - pracuję nad tym, cierpliwości
+- 0.8.2 - przywrócenie domyślnej miniaturki
 - 0.8.1 - odpowiedź na zgłoszone błędy: https://github.com/bohdanbobrowski/pr-dl/issues/3
-- 0.8.2 - przywrócenie domyslnej miniaturki
+- 0.8 - drobny refactor, poprawione pobieranie
+- 0.7 - szukanie działa znowu!
+- 0.6 - przejście na python3
+- 0.5
