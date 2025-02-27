@@ -1,8 +1,6 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
+import argparse
 
 from prdl.prdl import PrDlCrawl, PrDlSearch
-import sys
 
 
 def check_command_arguments(args):
@@ -11,39 +9,36 @@ def check_command_arguments(args):
     return False
 
 
-def check_valid_url(arg):
-    urls = [
+def check_valid_url(url: str) -> bool:
+    for pattern in [
+        "https://www.polskieradio24.pl",
         "https://polskieradio24.pl",
         "https://www.polskieradio.pl",
-        "http://www.polskieradio.pl",
-    ]
-    for url in urls:
-        if arg.find(url) == 0:
+        "https://polskieradio.pl",
+    ]:
+        if url.startswith(pattern):
             return True
     return False
 
 
-def print_help():
-    print("PRDL - Polskie Radio Downloader")
-    print("")
-    print("python pr-dl-cli.pl [url] [-t] [-f]")
-    print("")
-
-
-def main(args=None):
-    if not args:
-        args = sys.argv
-    if check_command_arguments(args):
-        SAVE_ALL = False
-        FORCED_SEARCH = False
-        if "-t" in args or "-T" in args:
-            SAVE_ALL = True
-        if "-f" in args or "-F" in args:
-            FORCED_SEARCH = True
-        if check_valid_url(args[1]):
-            prdl = PrDlCrawl(args[1], SAVE_ALL)
-        else:
-            prdl = PrDlSearch(args[1], SAVE_ALL, FORCED_SEARCH)
-        prdl.start()
+def main():
+    parser = argparse.ArgumentParser(prog="prdl", description="Polish Radio Downloader")
+    parser.add_argument("url_or_search", type=str, help="Url or search phrase.")
+    parser.add_argument(
+        "-a",
+        "--all",
+        action="store_true",
+        help="Save all podcasts without confirmation.",
+    )
+    parser.add_argument(
+        "-f",
+        "--forced",
+        action="store_true",
+        help="Don't trust PR searchengine - show only results with given keyword.",
+    )
+    args = parser.parse_args()
+    if check_valid_url(args.url_or_search):
+        polish_radio_downloader = PrDlCrawl(args.url_or_search, args.yes)
     else:
-        print_help()
+        polish_radio_downloader = PrDlSearch(args.url_or_search, args.yes, args.forced_search)
+    polish_radio_downloader.start()

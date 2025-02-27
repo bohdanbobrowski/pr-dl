@@ -1,35 +1,29 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-from download import download
-import eyed3
-from eyed3.id3 import ID3_V2_4
-from eyed3.id3.frames import ImageFrame
 import hashlib
+import json
+import logging
 import os
-from slugify import slugify
-import requests
 import urllib
 import urllib.request
-import json
+
+import eyed3
+import requests
 import validators
-from clint.textui import puts, colored
-from PIL import Image
+from clint.textui import colored, puts
+from download import download
+from eyed3.id3.frames import ImageFrame
 from lxml import etree
-import logging
+from PIL import Image
+from slugify import slugify
 
 
-class PrDlLoggingClass(object):
+class PrDlLoggingClass:
     def __init__(self):
         self.log = logging.getLogger(__name__)
         ch = logging.StreamHandler()
         ch.setLevel(logging.INFO)
-        formatter = logging.Formatter(
-            "%(asctime)s [%(name)s] - %(levelname)s - %(message)s"
-        )
+        formatter = logging.Formatter("%(asctime)s [%(name)s] - %(levelname)s - %(message)s")
         ch.setFormatter(formatter)
         self.log.addHandler(ch)
-        self.log.debug("Logger zainicjowany")
 
 
 class PrDlPodcast(PrDlLoggingClass):
@@ -109,7 +103,7 @@ class PrDlPodcast(PrDlLoggingClass):
         if os.path.isfile(self.file_name):
             if os.path.isfile(self.thumbnail_file_name):
                 audio = eyed3.load(self.file_name)
-                if audio.tag == None:
+                if audio.tag is None:
                     audio.initTag()
 
                 audio.tag.images.set(
@@ -128,9 +122,7 @@ class PrDlPodcast(PrDlLoggingClass):
             if audiofile:
                 audiofile.tag = eyed3.id3.Tag()
                 audiofile.tag.file_info = eyed3.id3.FileInfo(self.file_name)
-                comments = "{}\nUrl artykułu: {}\nUrl pliku mp3: {}\n\nPobrane przy pomocy skryptu https://github.com/bohdanbobrowski/pr-dl".format(
-                    self.description, self.article_url, self.url
-                )
+                comments = f"{self.description}\nUrl artykułu: {self.article_url}\nUrl pliku mp3: {self.url}\n\nPobrane przy pomocy skryptu https://github.com/bohdanbobrowski/pr-dl"
                 audiofile.tag.comments.set(comments)
                 audiofile.tag.artist = "Polskie Radio"
                 audiofile.tag.album = "polskieradio.pl"
@@ -139,9 +131,7 @@ class PrDlPodcast(PrDlLoggingClass):
                 audiofile.tag.audio_file_url = self.url
                 if self.track_number:
                     audiofile.tag.track_num = self.track_number
-                audiofile.tag.save(
-                    version=eyed3.id3.ID3_DEFAULT_VERSION, encoding="utf-8"
-                )
+                audiofile.tag.save(version=eyed3.id3.ID3_DEFAULT_VERSION, encoding="utf-8")
             else:
                 if audiofile is None:
                     os.remove(self.file_name)
@@ -163,7 +153,9 @@ class PrDl(PrDlLoggingClass):
 
             ch = getch()
         else:
-            import sys, tty, termios
+            import sys
+            import termios
+            import tty
 
             fd = sys.stdin.fileno()
             old_settings = termios.tcgetattr(fd)
@@ -194,9 +186,7 @@ class PrDl(PrDlLoggingClass):
         return abs_path_to_resource
 
     def download_podcast(self, podcast, current=0, total=0):
-        self.log.debug(
-            "Znaleziono podcast [{}/{}]: {}".format(current, podcast, podcast)
-        )
+        self.log.debug(f"Znaleziono podcast [{current}/{podcast}]: {podcast}")
         podcast = PrDlPodcast(podcast, track_number=current)
         puts(colored.blue("[" + str(current) + "/" + str(total) + "]"))
         puts(colored.white("Tytuł: " + podcast.title, bold=True))
@@ -225,9 +215,7 @@ class PrDlSearch(PrDl):
         # Najpierw szukam w responseach plików dźwiekowych
         files = {}
         for r in results:
-            crawl = PrDlCrawl(
-                "https://www.polskieradio.pl{}".format(r["url"]), self.save_all
-            )
+            crawl = PrDlCrawl("https://www.polskieradio.pl{}".format(r["url"]), self.save_all)
             files_on_page = crawl.get_podcasts_list()
             if r["image"]:
                 default_thumb = "https:{}".format(r["image"])
@@ -235,10 +223,7 @@ class PrDlSearch(PrDl):
                     if not files_on_page[f]["thumb"]:
                         files_on_page[f]["thumb"] = default_thumb
             for f in files_on_page:
-                if (
-                    not self.forced_search
-                    or self.phrase in files_on_page[f]["title"].lower()
-                ):
+                if not self.forced_search or self.phrase in files_on_page[f]["title"].lower():
                     files[f] = files_on_page[f]
         return files
 
@@ -250,7 +235,7 @@ class PrDlSearch(PrDl):
             + urllib.parse.quote(self.phrase.replace(" ", "+"))
             + "%22"
         )
-        self.log.info("Pobieram: {}".format(search_url))
+        self.log.info(f"Pobieram: {search_url}")
         return search_url
 
     def download_podcasts_list(self, podcasts):
@@ -266,16 +251,15 @@ class PrDlSearch(PrDl):
         self.download_podcasts_list(podcasts)
         if pages > 1:
             for p in range(2, pages):
-                self.log.info("Strona {} z {}:".format(p, pages))
-                response = json.loads(
-                    urllib.request.urlopen(self._get_search_url(p)).read()
-                )
+                self.log.info(f"Strona {p} z {pages}:")
+                response = json.loads(urllib.request.urlopen(self._get_search_url(p)).read())
                 podcasts = self.get_files(response["results"])
                 self.download_podcasts_list(podcasts)
 
 
 class PrDlCrawl(PrDl):
-    def __init__(self, url, save_all=False):
+    def __init__(self, url:str, save_all:bool):
+        super().__init__()
         self.url = url
         self.save_all = save_all
         self.log = logging.getLogger(__name__)
@@ -305,16 +289,12 @@ class PrDlCrawl(PrDl):
     def get_thumb(html_dom, art):
         thumb = None
         try:
-            thumb = "https:" + art.xpath(".//img[contains(@class, 'NoRightBtn')]")[
-                0
-            ].get("src")
+            thumb = "https:" + art.xpath(".//img[contains(@class, 'NoRightBtn')]")[0].get("src")
         except IndexError:
             pass
         if thumb is None:
             try:
-                thumb = html_dom.xpath(".//span[contains(@class, 'img')]")[0].get(
-                    "style"
-                )
+                thumb = html_dom.xpath(".//span[contains(@class, 'img')]")[0].get("style")
                 thumb = thumb.replace("background-image:url(", "https:")
                 thumb = thumb.replace(");", "")
             except (IndexError, AttributeError):
@@ -336,19 +316,11 @@ class PrDlCrawl(PrDl):
                     pdata_media = json.loads(p.attrib.get("data-media"))
                     uid = hashlib.md5(pdata_media["file"].encode("utf-8")).hexdigest()
                     try:
-                        title = art.xpath(".//h1[contains(@class, 'title')]")[
-                            0
-                        ].text.strip()
+                        title = art.xpath(".//h1[contains(@class, 'title')]")[0].text.strip()
                         if not title:
-                            title = art.xpath(".//h1[contains(@class, 'title')]/a")[
-                                0
-                            ].text.strip()
+                            title = art.xpath(".//h1[contains(@class, 'title')]/a")[0].text.strip()
                     except IndexError:
-                        title = (
-                            html_title
-                            + " - "
-                            + urllib.parse.unquote(pdata_media["title"]).strip()
-                        )
+                        title = html_title + " - " + urllib.parse.unquote(pdata_media["title"]).strip()
                     try:
                         description = urllib.parse.unquote(pdata_media["desc"]).strip()
                     except IndexError:
@@ -369,7 +341,7 @@ class PrDlCrawl(PrDl):
         return result
 
     def get_podcasts_list(self):
-        self.log.info("Analizowany url: {}".format(self.url))
+        self.log.info(f"Analizowany url: {self.url}")
         downloads_list = []
         html = self.get_web_page_content(self.url)
         downloads_list = self.get_podcasts(etree.HTML(html), self.url)

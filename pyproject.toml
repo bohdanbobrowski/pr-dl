@@ -1,0 +1,60 @@
+[project]
+name = "pr-dl"
+version = "0.9.0"
+description = "Polish Radio Downloader"
+authors = [{ name = "Bohdan Bobrowski", email = "bohdanbobrowski@gmail.com" }]
+license = { file = "LICENSE" }
+keywords = [
+
+]
+readme = "README.md"
+requires-python = ">=3.10, <3.13"
+dependencies = [
+    "lxml",
+    "eyed3",
+    "python-slugify",
+    "pycurl",
+    "pillow",
+    "clint",
+    "download",
+    "validators",
+]
+
+[project.optional-dependencies]
+dev = [
+    "ruff",
+    "pyinstaller",
+    "mypy",
+    "pytest",
+]
+
+[project.scripts]
+prdl = "prdl.prdlcli:main"
+
+[tool.setuptools]
+packages = [
+    "prdl",
+]
+
+[tool.setuptools.package-dir]
+blog2epub = "prdl"
+
+[tool.setuptools.package-data]
+assets = ["*.jpg"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "UP", "B", "I"]
+ignore = ["E501"]
+
+[tool.mypy]
+exclude = ["venv", "dist", "build"]
+
+[tool.ruff.lint.extend-per-file-ignores]
+"blog2epub_gui.py" = ["E402"]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
