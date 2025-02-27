@@ -16,10 +16,17 @@ Jak użyć:
 ====
 
     prdl --help
-
-W miejsce parametru url wklejamy link do strony w serwisie Polskiego Radia, lub słowo lub frazę jaką chcemy wyszukać.
-
-Opcjonalny parametr -t pozwala zaakceptować wszystkie pliki z góry.
+    usage: prdl [-h] [-a] [-f] url_or_search
+    
+    Polish Radio Downloader
+    
+    positional arguments:
+      url_or_search  Url or search phrase.
+    
+    options:
+      -h, --help     show this help message and exit
+      -a, --all      Save all podcasts without confirmation.
+      -f, --forced   Don't trust PR searchengine - show only results with given keyword.
 
 Przykład:
 ====

@@ -38,7 +38,11 @@ def main():
     )
     args = parser.parse_args()
     if check_valid_url(args.url_or_search):
-        polish_radio_downloader = PrDlCrawl(args.url_or_search, args.yes)
+        polish_radio_downloader = PrDlCrawl(args.url_or_search, args.all)
     else:
-        polish_radio_downloader = PrDlSearch(args.url_or_search, args.yes, args.forced_search)
+        polish_radio_downloader = PrDlSearch(args.url_or_search, args.all, args.forced_search)
     polish_radio_downloader.start()
+
+
+if __name__ == "__main__":
+    main()

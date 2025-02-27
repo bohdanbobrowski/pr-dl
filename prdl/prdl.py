@@ -2,6 +2,7 @@ import hashlib
 import json
 import logging
 import os
+import pathlib
 import urllib
 import urllib.request
 
@@ -38,8 +39,8 @@ class PrDlPodcast(PrDlLoggingClass):
         self.file_size = 0
         self.thumbnail_url = podcast["thumb"]
         self.thumbnail_delete_after = False
-        self.thumbnail_default_fn = self.getDefaultThumbnail()
-        self.setThumbnailFileName()
+        self.thumbnail_default_fn = self.get_default_thumbnail()
+        self.set_thumbnail_file_name()
         self.track_number = track_number
         super().__init__()
 
@@ -58,7 +59,7 @@ class PrDlPodcast(PrDlLoggingClass):
         file_name = file_name + ".mp3"
         return file_name
 
-    def setThumbnailFileName(self):
+    def set_thumbnail_file_name(self):
         if self.thumbnail_url:
             expr = self.thumbnail_url.split(".")[-1]
             if expr.find("?"):
@@ -72,15 +73,12 @@ class PrDlPodcast(PrDlLoggingClass):
             self.thumbnail_delete_after = False
             self.thumbnail_file_name = self.thumbnail_default_fn
 
-    def getDefaultThumbnail(self):
+    def get_default_thumbnail(self):
         self.thumbnail_mime = "image/jpg"
-        tpath = os.path.realpath(__file__).split("/")
-        tpath.pop()
-        tpath.append("polskieradio_logo_cover.jpg")
-        tpath = "/".join(tpath)
-        return tpath
+        thumbnail_path = pathlib.Path(__file__).parent.resolve()
+        return os.path.join(thumbnail_path, "polskieradio_logo_cover.jpg")
 
-    def downloadThumbnail(self):
+    def download_thumbnail(self):
         fpath = os.getcwd() + "/" + str(self.thumbnail_file_name).strip()
         if os.path.isfile(fpath):
             os.remove(fpath)
@@ -88,7 +86,7 @@ class PrDlPodcast(PrDlLoggingClass):
             urllib.request.urlretrieve(self.thumbnail_url, fpath)
             size = (200, 200)
             image = Image.open(fpath)
-            image.thumbnail(size, Image.ANTIALIAS)
+            image.thumbnail(size, Image.LANCZOS)
             background = Image.open(self.thumbnail_default_fn)
             background.paste(
                 image,
@@ -99,7 +97,7 @@ class PrDlPodcast(PrDlLoggingClass):
             )
             background.save(self.thumbnail_file_name)
 
-    def addThumbnail(self):
+    def add_thumbnail(self):
         if os.path.isfile(self.file_name):
             if os.path.isfile(self.thumbnail_file_name):
                 audio = eyed3.load(self.file_name)
@@ -140,12 +138,6 @@ class PrDlPodcast(PrDlLoggingClass):
 
 
 class PrDl(PrDlLoggingClass):
-    def __init__(self, phrase, save_all=False, forced_search=False):
-        self.phrase = phrase.lower()
-        self.forced_search = forced_search
-        self.save_all = save_all
-        super().__init__()
-
     @staticmethod
     def get_key():
         if os.name == "nt":
@@ -164,19 +156,16 @@ class PrDl(PrDlLoggingClass):
             termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
         return ch
 
-    def confirm_save(self, answer):
-        if answer == 1:
-            return 1
+    def confirm_save(self) -> bool:
+        puts(colored.red("Czy zapisać podcast? ([t]ak / [n]ie / [z]akoncz)"))
+        key = self.get_key()
+        if key == "z" or key == "Z":
+            self.log.info("Przerwano na polecenie użytkownika")
+            exit()
+        if key == "t" or key == "T":
+            return True
         else:
-            puts(colored.red("Czy zapisać podcast? ([t]ak / [n]ie / [z]akoncz)"))
-            key = self.get_key()
-            if key == "z" or key == "Z":
-                self.log.info("Przerwano na polecenie użytkownika")
-                exit()
-            if key == "t" or key == "T":
-                return 1
-            else:
-                return 0
+            return False
 
     @staticmethod
     def get_resource_path(rel_path):
@@ -199,11 +188,14 @@ class PrDl(PrDlLoggingClass):
             podcast.file_name = podcast.get_filename(x)
             x += 1
         else:
-            if self.confirm_save(self.save_all) == 1:
-                download(podcast.url, "./" + podcast.file_name)
-                podcast.id3tag()
-                podcast.downloadThumbnail()
-                podcast.addThumbnail()
+            if self.save_all or self.confirm_save():
+                try:
+                    download(podcast.url, "./" + podcast.file_name)
+                    podcast.id3tag()
+                    podcast.download_thumbnail()
+                    podcast.add_thumbnail()
+                except RuntimeError as e:
+                    self.log.error(e)
 
     def get_web_page_content(self, url):
         response = requests.get(url)
@@ -211,6 +203,11 @@ class PrDl(PrDlLoggingClass):
 
 
 class PrDlSearch(PrDl):
+    def __init__(self, phrase, save_all=False, forced_search=False):
+        self.phrase = phrase.lower()
+        self.forced_search = forced_search
+        self.save_all = save_all
+
     def get_files(self, results):
         # Najpierw szukam w responseach plików dźwiekowych
         files = {}
@@ -258,7 +255,7 @@ class PrDlSearch(PrDl):
 
 
 class PrDlCrawl(PrDl):
-    def __init__(self, url:str, save_all:bool):
+    def __init__(self, url: str, save_all: bool):
         super().__init__()
         self.url = url
         self.save_all = save_all
@@ -342,7 +339,6 @@ class PrDlCrawl(PrDl):
 
     def get_podcasts_list(self):
         self.log.info(f"Analizowany url: {self.url}")
-        downloads_list = []
         html = self.get_web_page_content(self.url)
         downloads_list = self.get_podcasts(etree.HTML(html), self.url)
         return downloads_list

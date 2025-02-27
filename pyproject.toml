@@ -1,5 +1,5 @@
 [project]
-name = "pr-dl"
+name = "prdl"
 version = "0.9.0"
 description = "Polish Radio Downloader"
 authors = [{ name = "Bohdan Bobrowski", email = "bohdanbobrowski@gmail.com" }]
