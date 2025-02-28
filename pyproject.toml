@@ -14,10 +14,11 @@ dependencies = [
     "eyed3",
     "python-slugify",
     "pycurl",
-    "pillow",
+    "Pillow",
     "clint",
     "download",
     "validators",
+    "Requests",
 ]
 
 [project.optional-dependencies]
