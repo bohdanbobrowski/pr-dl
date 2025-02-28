@@ -138,6 +138,12 @@ class PrDlPodcast(PrDlLoggingClass):
 
 
 class PrDl(PrDlLoggingClass):
+    def __init__(self):
+        super().__init__()
+        self.phrase: str = ""
+        self.forced_search: bool = False
+        self.save_all: bool = False
+
     @staticmethod
     def get_key():
         if os.name == "nt":
@@ -158,11 +164,11 @@ class PrDl(PrDlLoggingClass):
 
     def confirm_save(self) -> bool:
         puts(colored.red("Czy zapisać podcast? ([t]ak / [n]ie / [z]akoncz)"))
-        key = self.get_key()
-        if key == "z" or key == "Z":
+        key = self.get_key().decode()
+        if key in ["z", "Z"]:
             self.log.info("Przerwano na polecenie użytkownika")
             exit()
-        if key == "t" or key == "T":
+        if key in ["t", "T", "y", "Y"]:
             return True
         else:
             return False
@@ -204,6 +210,7 @@ class PrDl(PrDlLoggingClass):
 
 class PrDlSearch(PrDl):
     def __init__(self, phrase, save_all=False, forced_search=False):
+        super().__init__()
         self.phrase = phrase.lower()
         self.forced_search = forced_search
         self.save_all = save_all

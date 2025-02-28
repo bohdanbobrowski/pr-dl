@@ -40,7 +40,7 @@ def main():
     if check_valid_url(args.url_or_search):
         polish_radio_downloader = PrDlCrawl(args.url_or_search, args.all)
     else:
-        polish_radio_downloader = PrDlSearch(args.url_or_search, args.all, args.forced_search)
+        polish_radio_downloader = PrDlSearch(args.url_or_search, args.all, args.forced)
     polish_radio_downloader.start()
 
 
