@@ -1,18 +1,16 @@
 PR-DL: Polskie Radio DownLoader
 ==
 
-Documentation is only in polish here - beacause Polish Radio is in polish :-)
-
 Proste pobieranie podkastów z serwisu internetowego Polskiego Radia (polskieradio.pl).
 
 Skrypt powstawał przez lata. Był pisany lewą nogą i wymagałby srogiego refaktoru. Jak widzę niektóre jego elementy to się za głowę łapię! W zasadzie jedyną jego zaletą jest to, że jako-tako działa.
 
-Instalacja:
+Installation:
 ====
 
     pip install git+https://github.com/bohdanbobrowski/pr-dl
 
-Jak użyć:
+Usage:
 ====
 
     prdl --help
@@ -28,32 +26,16 @@ Jak użyć:
       -a, --all      Save all podcasts without confirmation.
       -f, --forced   Don't trust PR searchengine - show only results with given keyword.
 
-Przykład:
+Examples:
 ====
 
-Aby pobrać wskazaną audycję należy wykonac komendę np.:
+    prdl https://www.polskieradio.pl/8/755/Artykul/426557 -a
 
-    prdl https://www.polskieradio.pl/8/755/Artykul/426557
-
-
-Aby wyszukać słowo lub frazę w wyszukiwarce Polskiego Radia skrypt odpalamy tak:
-    
     prdl Wańkowicz
 
-lub z -f na końcu dla "wzmocnionego" szukania w tytułach (wyszukiwarka PR niestety wyrzuca całą masę chłamu):
-    
     prdl "Sergiusz Piasecki" -f
 
-parametr -t powoduje że wszystkie podcasty zostaną pobrane bez pytania o zgodę:
-
-Plany:
-====
-
-Będę starał się skrypt utrzymywać i rozwijać, gdyż sam z niego regularnie korzystam.
-
-Mimo pewnych (nie koniecznie) zmian w Polskim Radiu, nadal pojawia się tam sporo wartościowego contentu... który wystarczy tylko odpowiednio odsiać... ;-)
-
-Historia wersji:
+Versions history:
 ====
 
 - 0.9 - pracuję nad tym, cierpliwości

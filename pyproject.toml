@@ -24,9 +24,9 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "ruff",
-    "pyinstaller",
     "mypy",
     "pytest",
+    "pipreqs",
 ]
 
 [project.scripts]
