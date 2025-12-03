@@ -46,7 +46,7 @@ class PrDlPodcast(PrDlLoggingClass):
 
     def _getUrlHash(self):
         url_hash = hashlib.md5(self.url.encode("utf-8")).hexdigest()
-        return str(url_hash[0:20])
+        return url_hash[0:20]
 
     def get_filename(self, suffix=""):
         file_name = slugify(self.title.replace("ł", "l").replace("Ł", "L"))

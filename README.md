@@ -2,8 +2,10 @@ PR-DL: Polskie Radio DownLoader
 ==
 
 Proste pobieranie podkastów z serwisu internetowego Polskiego Radia (polskieradio.pl).
+Skrypt powstawał przez lata. Był pisany lewą nogą, bez planu i wymagałby srogiego refaktoru.
+W zasadzie jedyną jego zaletą jest to, że jako-tako działa(ł)*.
 
-Skrypt powstawał przez lata. Był pisany lewą nogą i wymagałby srogiego refaktoru. Jak widzę niektóre jego elementy to się za głowę łapię! W zasadzie jedyną jego zaletą jest to, że jako-tako działa.
+* własnie nie działa zupełnie, i może bym go naprawił?
 
 Installation:
 ====
@@ -34,14 +36,3 @@ Examples:
     prdl Wańkowicz
 
     prdl "Sergiusz Piasecki" -f
-
-Versions history:
-====
-
-- 0.9 - pracuję nad tym, cierpliwości
-- 0.8.2 - przywrócenie domyślnej miniaturki
-- 0.8.1 - odpowiedź na zgłoszone błędy: https://github.com/bohdanbobrowski/pr-dl/issues/3
-- 0.8 - drobny refactor, poprawione pobieranie
-- 0.7 - szukanie działa znowu!
-- 0.6 - przejście na python3
-- 0.5
