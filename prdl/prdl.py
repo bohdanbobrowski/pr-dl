@@ -28,25 +28,36 @@ class PrDlLoggingClass:
 
 
 class PrDlPodcast(PrDlLoggingClass):
-    def __init__(self, podcast, track_number=None):
-        self.url = podcast["url"]
-        self.uid = podcast["uid"]
-        self.article_url = podcast["article_url"]
-        self.title = podcast["title"]
-        self.url_hash = self._getUrlHash()
-        self.description = podcast["description"]
+    def __init__(
+        self,
+        article_url: str,
+        description: str,
+        file_name: str,
+        thumb: str,
+        title: str,
+        uid: str,
+        url: str,
+        track_number=None,
+    ):
+        self.url = url
+        self.uid = uid
+        self.article_url = article_url
+        self.title = title
+        self.description = description
         self.file_name = self.get_filename()
         self.file_size = 0
-        self.thumbnail_url = podcast["thumb"]
+        self.thumbnail_url = thumb
         self.thumbnail_delete_after = False
         self.thumbnail_default_fn = self.get_default_thumbnail()
+        self.thumbnail_file_name = ""
+        self.thumbnail_mime = "image/jpg"
         self.set_thumbnail_file_name()
         self.track_number = track_number
         super().__init__()
 
-    def _getUrlHash(self):
-        url_hash = hashlib.md5(self.url).hexdigest()
-        return url_hash[0:20]
+    @property
+    def url_hash(self) -> str:
+        return hashlib.md5(self.url.encode()).digest().decode("utf8")
 
     def get_filename(self, suffix=""):
         file_name = slugify(self.title.replace("ł", "l").replace("Ł", "L"))
@@ -66,7 +77,6 @@ class PrDlPodcast(PrDlLoggingClass):
                 expr = expr.split("?")[0]
             if expr == "file":
                 expr = "jpg"
-            self.thumbnail_mime = "image/jpeg"
             self.thumbnail_delete_after = True
             self.thumbnail_file_name = self.url_hash + "." + expr
         else:
@@ -74,7 +84,6 @@ class PrDlPodcast(PrDlLoggingClass):
             self.thumbnail_file_name = self.thumbnail_default_fn
 
     def get_default_thumbnail(self):
-        self.thumbnail_mime = "image/jpg"
         thumbnail_path = pathlib.Path(__file__).parent.resolve()
         return os.path.join(thumbnail_path, "polskieradio_logo_cover.jpg")
 
@@ -182,7 +191,7 @@ class PrDl(PrDlLoggingClass):
 
     def download_podcast(self, podcast, current=0, total=0):
         self.log.debug(f"Znaleziono podcast [{current}/{podcast}]: {podcast}")
-        podcast = PrDlPodcast(podcast, track_number=current)
+        podcast = PrDlPodcast(**podcast, track_number=current)
         puts(colored.blue("[" + str(current) + "/" + str(total) + "]"))
         puts(colored.white("Tytuł: " + podcast.title, bold=True))
         puts(colored.white("Link: " + podcast.url))
@@ -191,7 +200,7 @@ class PrDl(PrDlLoggingClass):
             puts(colored.white("Miniaturka: " + podcast.thumbnail_url))
         x = 1
         while os.path.isfile(podcast.file_name):
-            podcast.file_name = podcast.get_filename(x)
+            podcast.file_name = podcast.get_filename(str(x))
             x += 1
         else:
             if self.save_all or self.confirm_save():
@@ -218,10 +227,10 @@ class PrDlSearch(PrDl):
     def get_files(self, results):
         files = {}
         for r in results:
-            crawl = PrDlCrawl(f"https://www.polskieradio.pl{r["url"]}", self.save_all)
+            crawl = PrDlCrawl(f"https://www.polskieradio.pl{r['url']}", self.save_all)
             files_on_page = crawl.get_podcasts_list()
             if r["image"]:
-                default_thumb = f"https:{r["image"]}"
+                default_thumb = f"https:{r['image']}"
                 for f in files_on_page:
                     if not files_on_page[f]["thumb"]:
                         files_on_page[f]["thumb"] = default_thumb
@@ -317,7 +326,7 @@ class PrDlCrawl(PrDl):
             for p in podcast:
                 try:
                     pdata_media = json.loads(p.attrib.get("data-media"))
-                    uid = hashlib.md5(pdata_media["file"]).hexdigest()
+                    uid = hashlib.md5(pdata_media["file"].encode()).digest()
                     try:
                         title = art.xpath(".//h1[contains(@class, 'title')]")[0].text.strip()
                         if not title:
@@ -334,7 +343,7 @@ class PrDlCrawl(PrDl):
                         "article_url": article_url,
                         "title": title,
                         "description": description,
-                        "fname": self.get_filename(title),
+                        "file_name": self.get_filename(title),
                         "thumb": thumb,
                     }
                     if uid not in result:
