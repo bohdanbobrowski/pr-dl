@@ -2,6 +2,71 @@ import argparse
 
 from prdl.prdl import PrDlCrawl, PrDlSearch
 
+POLSKIE_RADIO_SUBDOMAINS = [
+    "3pyta.polskieradio.pl",
+    "4q.embedder.polskieradio.pl",
+    "admins@polskieradio.pl",
+    "apiv4.embedder.polskieradio.pl",
+    "autodiscover.polskieradio.pl",
+    "chopin.polskieradio.pl",
+    "chopin-test.polskieradio.pl",
+    "cm22.embedder.polskieradio.pl",
+    "embedder.polskieradio.pl",
+    "fb.polskieradio.pl",
+    "ftps.polskieradio.pl",
+    "hubs.polskieradio.pl",
+    "iar.polskieradio.pl",
+    "intranet-test.polskieradio.pl",
+    "jedynka.polskieradio.pl",
+    "linport.polskieradio.pl",
+    "live.embedder.polskieradio.pl",
+    "loteria.polskieradio.pl",
+    "lukasz.rakowski@polskieradio.pl",
+    "lzr2021.polskieradio.pl",
+    "mg22.embedder.polskieradio.pl",
+    "mobileapi.polskieradio.pl",
+    "mojepolskieradio.pl",
+    "norwid.polskieradio.pl",
+    "npr24.embedder.polskieradio.pl",
+    "opal.polskieradio.pl",
+    "player.polskieradio.pl",
+    "poczta2.polskieradio.pl",
+    "poczta.polskieradio.pl",
+    "podcasty.polskieradio.pl",
+    "polskieradio.pl",
+    "postmaster@polskieradio.pl",
+    "prkapi.embedder.polskieradio.pl",
+    "prkcmstest.embedder.polskieradio.pl",
+    "prktest.embedder.polskieradio.pl",
+    "redaktor.polskieradio.pl",
+    "reportaz.polskieradio.pl",
+    "rozewicz.polskieradio.pl",
+    "skleporders.polskieradio.pl",
+    "sklep.polskieradio.pl",
+    "srep.embedder.polskieradio.pl",
+    "test.embedder.polskieradio.pl",
+    "testlato.polskieradio.pl",
+    "test-le.polskieradio.pl",
+    "trojka.polskieradio.pl",
+    "trojkapyta.polskieradio.pl",
+    "www.3pyta.polskieradio.pl",
+    "www.chopin.polskieradio.pl",
+    "www.embedder.polskieradio.pl",
+    "www.jedynka.polskieradio.pl",
+    "www.loteria.polskieradio.pl",
+    "www.mojepolskieradio.pl",
+    "www.norwid.polskieradio.pl",
+    "www.podcasty.polskieradio.pl",
+    "www.polskieradio.pl",
+    "www.prktest.embedder.polskieradio.pl",
+    "www.reportaz.polskieradio.pl",
+    "www.rozewicz.polskieradio.pl",
+    "www.sklep.polskieradio.pl",
+    "www.srep.embedder.polskieradio.pl",
+    "www.trojka.polskieradio.pl",
+    "www.trojkapyta.polskieradio.pl",
+]
+
 
 def check_command_arguments(args):
     if len(args) > 1:
@@ -10,13 +75,8 @@ def check_command_arguments(args):
 
 
 def check_valid_url(url: str) -> bool:
-    for pattern in [
-        "https://www.polskieradio24.pl",
-        "https://polskieradio24.pl",
-        "https://www.polskieradio.pl",
-        "https://polskieradio.pl",
-    ]:
-        if url.startswith(pattern):
+    for subdomain in POLSKIE_RADIO_SUBDOMAINS:
+        if url.startswith(f"https://{subdomain}") or url.startswith(subdomain):
             return True
     return False
 

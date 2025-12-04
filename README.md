@@ -1,11 +1,7 @@
 PR-DL: Polskie Radio DownLoader
 ==
 
-Proste pobieranie podkastów z serwisu internetowego Polskiego Radia (polskieradio.pl).
-Skrypt powstawał przez lata. Był pisany lewą nogą, bez planu i wymagałby srogiego refaktoru.
-W zasadzie jedyną jego zaletą jest to, że jako-tako działa(ł)*.
-
-* własnie nie działa zupełnie, i może bym go naprawił?
+Simple script that downloads podcasts from Polish Radio webservices.
 
 Installation:
 ====

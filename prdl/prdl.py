@@ -45,7 +45,7 @@ class PrDlPodcast(PrDlLoggingClass):
         super().__init__()
 
     def _getUrlHash(self):
-        url_hash = hashlib.md5(self.url.encode("utf-8")).hexdigest()
+        url_hash = hashlib.md5(self.url).hexdigest()
         return url_hash[0:20]
 
     def get_filename(self, suffix=""):
@@ -164,7 +164,7 @@ class PrDl(PrDlLoggingClass):
 
     def confirm_save(self) -> bool:
         puts(colored.red("Czy zapisać podcast? ([t]ak / [n]ie / [z]akoncz)"))
-        key = self.get_key().decode()
+        key = self.get_key()
         if key in ["z", "Z"]:
             self.log.info("Przerwano na polecenie użytkownika")
             exit()
@@ -216,13 +216,12 @@ class PrDlSearch(PrDl):
         self.save_all = save_all
 
     def get_files(self, results):
-        # Najpierw szukam w responseach plików dźwiekowych
         files = {}
         for r in results:
-            crawl = PrDlCrawl("https://www.polskieradio.pl{}".format(r["url"]), self.save_all)
+            crawl = PrDlCrawl(f"https://www.polskieradio.pl{r["url"]}", self.save_all)
             files_on_page = crawl.get_podcasts_list()
             if r["image"]:
-                default_thumb = "https:{}".format(r["image"])
+                default_thumb = f"https:{r["image"]}"
                 for f in files_on_page:
                     if not files_on_page[f]["thumb"]:
                         files_on_page[f]["thumb"] = default_thumb
@@ -318,7 +317,7 @@ class PrDlCrawl(PrDl):
             for p in podcast:
                 try:
                     pdata_media = json.loads(p.attrib.get("data-media"))
-                    uid = hashlib.md5(pdata_media["file"].encode("utf-8")).hexdigest()
+                    uid = hashlib.md5(pdata_media["file"]).hexdigest()
                     try:
                         title = art.xpath(".//h1[contains(@class, 'title')]")[0].text.strip()
                         if not title:
