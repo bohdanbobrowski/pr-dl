@@ -16,18 +16,20 @@ from lxml import etree
 from PIL import Image
 from slugify import slugify
 
+logger = logging.getLogger(__name__)
+ch = logging.StreamHandler()
+ch.setLevel(logging.INFO)
+formatter = logging.Formatter("%(asctime)s [%(name)s] - %(levelname)s - %(message)s")
+ch.setFormatter(formatter)
+logger.addHandler(ch)
 
-class PrDlLoggingClass:
+
+class LoggingClass:
     def __init__(self):
-        self.log = logging.getLogger(__name__)
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.INFO)
-        formatter = logging.Formatter("%(asctime)s [%(name)s] - %(levelname)s - %(message)s")
-        ch.setFormatter(formatter)
-        self.log.addHandler(ch)
+        self.logger = logger
 
 
-class PrDlPodcast(PrDlLoggingClass):
+class PrDlPodcast(LoggingClass):
     def __init__(
         self,
         article_url: str,
@@ -39,6 +41,7 @@ class PrDlPodcast(PrDlLoggingClass):
         url: str,
         track_number=None,
     ):
+        super().__init__()
         self.url = url
         self.uid = uid
         self.article_url = article_url
@@ -57,7 +60,7 @@ class PrDlPodcast(PrDlLoggingClass):
 
     @property
     def url_hash(self) -> str:
-        return hashlib.md5(self.url.encode()).digest().decode("utf8")
+        return hashlib.md5(self.url.encode()).hexdigest()
 
     def get_filename(self, suffix=""):
         file_name = slugify(self.title.replace("ł", "l").replace("Ł", "L"))
@@ -146,58 +149,36 @@ class PrDlPodcast(PrDlLoggingClass):
                         os.remove(self.thumbnail_file_name)
 
 
-class PrDl(PrDlLoggingClass):
+class PrDl(LoggingClass):
     def __init__(self):
         super().__init__()
         self.phrase: str = ""
         self.forced_search: bool = False
         self.save_all: bool = False
 
-    @staticmethod
-    def get_key():
-        if os.name == "nt":
-            from msvcrt import getch
-
-            ch = getch()
-        else:
-            import sys
-            import termios
-            import tty
-
-            fd = sys.stdin.fileno()
-            old_settings = termios.tcgetattr(fd)
-            tty.setraw(sys.stdin.fileno())
-            ch = sys.stdin.read(1)
-            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-        return ch
-
     def confirm_save(self) -> bool:
-        puts(colored.red("Czy zapisać podcast? ([t]ak / [n]ie / [z]akoncz)"))
-        key = self.get_key()
-        if key in ["z", "Z"]:
-            self.log.info("Przerwano na polecenie użytkownika")
+        puts(colored.red("Save? ([y]es / [n]o / [q]uit)"))
+        key = input()
+        if key == "q":
+            self.logger.info("Good bye.")
             exit()
-        if key in ["t", "T", "y", "Y"]:
+        if key in ["y"]:
             return True
-        else:
-            return False
+        return False
 
     @staticmethod
     def get_resource_path(rel_path):
-        dir_of_py_file = os.path.dirname(__file__)
-        rel_path_to_resource = os.path.join(dir_of_py_file, rel_path)
-        abs_path_to_resource = os.path.abspath(rel_path_to_resource)
-        return abs_path_to_resource
+        return os.path.abspath(os.path.join(os.path.dirname(__file__), rel_path))
 
     def download_podcast(self, podcast, current=0, total=0):
-        self.log.debug(f"Znaleziono podcast [{current}/{podcast}]: {podcast}")
+        self.logger.debug(f"Podcast found [{current}/{podcast}]: {podcast}")
         podcast = PrDlPodcast(**podcast, track_number=current)
         puts(colored.blue("[" + str(current) + "/" + str(total) + "]"))
-        puts(colored.white("Tytuł: " + podcast.title, bold=True))
-        puts(colored.white("Link: " + podcast.url))
-        puts(colored.white("Plik: " + podcast.file_name))
+        puts(colored.white("Title: " + podcast.title, bold=True))
+        puts(colored.white("Urk: " + podcast.url))
+        puts(colored.white("File: " + podcast.file_name))
         if podcast.thumbnail_url:
-            puts(colored.white("Miniaturka: " + podcast.thumbnail_url))
+            puts(colored.white("Thubnail: " + podcast.thumbnail_url))
         x = 1
         while os.path.isfile(podcast.file_name):
             podcast.file_name = podcast.get_filename(str(x))
@@ -210,9 +191,10 @@ class PrDl(PrDlLoggingClass):
                     podcast.download_thumbnail()
                     podcast.add_thumbnail()
                 except RuntimeError as e:
-                    self.log.error(e)
+                    self.logger.error(e)
 
-    def get_web_page_content(self, url):
+    @staticmethod
+    def get_web_page_content(url):
         response = requests.get(url)
         return response.text
 
@@ -227,14 +209,17 @@ class PrDlSearch(PrDl):
     def get_files(self, results):
         files = {}
         for r in results:
-            crawl = PrDlCrawl(f"https://www.polskieradio.pl{r['url']}", self.save_all)
-            files_on_page = crawl.get_podcasts_list()
-            if r["image"]:
-                default_thumb = f"https:{r['image']}"
-                for f in files_on_page:
+            self.logger.info(f"Analyzing: {r['url']}")
+            crawler = PrDlCrawl(
+                url=f"https://www.polskieradio.pl{r['url']}",
+                save_all=self.save_all,
+            )
+            files_on_page = crawler.get_podcasts_list()
+            for f in files_on_page:
+                if r["image"]:
+                    default_thumb = f"https:{r['image']}"
                     if not files_on_page[f]["thumb"]:
                         files_on_page[f]["thumb"] = default_thumb
-            for f in files_on_page:
                 if not self.forced_search or self.phrase in files_on_page[f]["title"].lower():
                     files[f] = files_on_page[f]
         return files
@@ -247,7 +232,7 @@ class PrDlSearch(PrDl):
             + urllib.parse.quote(self.phrase.replace(" ", "+"))
             + "%22"
         )
-        self.log.info(f"Pobieram: {search_url}")
+        self.logger.info(f"Downloading: {search_url}")
         return search_url
 
     def download_podcasts_list(self, podcasts):
@@ -263,7 +248,7 @@ class PrDlSearch(PrDl):
         self.download_podcasts_list(podcasts)
         if pages > 1:
             for p in range(2, pages):
-                self.log.info(f"Strona {p} z {pages}:")
+                self.logger.info(f"Page {p}/{pages}:")
                 response = json.loads(urllib.request.urlopen(self._get_search_url(p)).read())
                 podcasts = self.get_files(response["results"])
                 self.download_podcasts_list(podcasts)
@@ -274,8 +259,7 @@ class PrDlCrawl(PrDl):
         super().__init__()
         self.url = url
         self.save_all = save_all
-        self.log = logging.getLogger(__name__)
-        self.log.setLevel(logging.DEBUG)
+        self.logger.setLevel(logging.DEBUG)
 
     @staticmethod
     def get_filename(title):
@@ -326,7 +310,7 @@ class PrDlCrawl(PrDl):
             for p in podcast:
                 try:
                     pdata_media = json.loads(p.attrib.get("data-media"))
-                    uid = hashlib.md5(pdata_media["file"].encode()).digest()
+                    uid = hashlib.md5(pdata_media["file"].encode()).hexdigest()
                     try:
                         title = art.xpath(".//h1[contains(@class, 'title')]")[0].text.strip()
                         if not title:
@@ -349,11 +333,10 @@ class PrDlCrawl(PrDl):
                     if uid not in result:
                         result[uid] = podcast
                 except Exception as e:
-                    self.log.error(e)
+                    self.logger.error(e)
         return result
 
     def get_podcasts_list(self):
-        self.log.info(f"Analizowany url: {self.url}")
         html = self.get_web_page_content(self.url)
         downloads_list = self.get_podcasts(etree.HTML(html), self.url)
         return downloads_list
