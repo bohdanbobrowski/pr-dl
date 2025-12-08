@@ -175,7 +175,7 @@ class PrDl(LoggingClass):
         self.logger.debug(f"Podcast found [{current}/{podcast}]: {podcast}")
         puts(colored.blue("[" + str(current) + "/" + str(total) + "]"))
         puts(colored.white("Title: " + podcast.title, bold=True))
-        puts(colored.white("Urk: " + podcast.url))
+        puts(colored.white("Url: " + podcast.url))
         puts(colored.white("File: " + podcast.file_name))
         if podcast.thumbnail_url:
             puts(colored.white("Thubnail: " + podcast.thumbnail_url))
@@ -326,18 +326,19 @@ class PrDlCrawl(PrDl):
                     except json.decoder.JSONDecodeError:
                         pass
         track_number = 0
-        for podcast in data:
-            podcasts_list.append(PrDlPodcast(
-                article_url=url,
-                description=podcast.get("description", ""),
-                file_name=podcast.get("title"),
-                thumb=podcast.get("cover"),
-                title=podcast.get("title"),
-                uid=podcast.get("id"),
-                url=podcast.get("url"),
-                track_number = track_number,
-            ))
-            track_number += 1
+        if data:
+            for podcast in data:
+                podcasts_list.append(PrDlPodcast(
+                    article_url=url,
+                    description=podcast.get("description", ""),
+                    file_name=podcast.get("title"),
+                    thumb=podcast.get("cover"),
+                    title=podcast.get("title"),
+                    uid=podcast.get("id"),
+                    url=podcast.get("url"),
+                    track_number = track_number,
+                ))
+                track_number += 1
         return podcasts_list
 
     def get_podcasts(self, html_dom, article_url="") -> list[PrDlPodcast]:
