@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import pathlib
+import re
 import urllib
 import urllib.request
 
@@ -301,8 +302,46 @@ class PrDlCrawl(PrDl):
         else:
             return None
 
-    def get_podcasts(self, html_dom, article_url=""):
-        result = {}
+    @staticmethod
+    def get_occurrences(pattern:str, data) -> list[int]:
+        return [match.start() for match in re.finditer(pattern, data)]
+
+    @staticmethod
+    def get_podcasts_v2(page_data: str) -> list[dict] | None:
+        data = None
+        # page_data = page_data.replace('\\"', '"')
+        # page_data = page_data.replace('\\\\"', '')
+        # page_data = page_data.replace(':null,', ':"",')
+        for start in PrDlCrawl.get_occurrences("self\.__next_f\.push", page_data):
+            page_data_part = page_data[start+19:]
+            end = page_data_part.find(")</script>")
+            # for end in [match.start() for match in re.finditer("</script>", page_data_part)]:
+            page_data_part = page_data_part[:end]
+            mp3s = PrDlCrawl.get_occurrences(".mp3", page_data_part)
+            if mp3s:
+                try:
+                    data = json.loads(page_data_part)
+                    print(data)
+                    # break
+                except json.decoder.JSONDecodeError:
+                    pass
+        # if page_data.find('\\"podcasts\\":') > -1:
+        #     page_data = page_data.split('\\"podcasts\\":')[1]
+        #     page_data = page_data.replace('\\"', '"')
+        #     page_data = page_data.replace('\\\\"', '')
+        #     page_data = page_data.replace(':null,', ':"",')
+        #     positions = [match.start() for match in re.finditer("]", page_data)]
+        #     for position in positions:
+        #         data_json = page_data[:position + 1]
+        #         try:
+        #             data = json.loads(data_json)
+        #             break
+        #         except json.decoder.JSONDecodeError:
+        #             pass
+        return data
+
+    def get_podcasts(self, html_dom, article_url="") -> list[dict]:
+        podcasts_list = []
         html_title = html_dom.xpath("//title")[0].text.strip()
         for art in self.get_articles(html_dom):
             podcast = art.xpath(".//*[@data-media]")
@@ -330,15 +369,16 @@ class PrDlCrawl(PrDl):
                         "file_name": self.get_filename(title),
                         "thumb": thumb,
                     }
-                    if uid not in result:
-                        result[uid] = podcast
+                    podcasts_list.append(podcast)
                 except Exception as e:
                     self.logger.error(e)
-        return result
+        return podcasts_list
 
     def get_podcasts_list(self):
         html = self.get_web_page_content(self.url)
-        downloads_list = self.get_podcasts(etree.HTML(html), self.url)
+        downloads_list = self.get_podcasts_v2(html)
+        if not downloads_list:
+            downloads_list = self.get_podcasts(etree.HTML(html), self.url)
         return downloads_list
 
     def start(self):

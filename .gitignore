@@ -9,3 +9,4 @@ __pycache__
 /prdlcli_test.py
 *.mp3
 /*.jpg
+/*.html
