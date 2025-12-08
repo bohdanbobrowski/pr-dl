@@ -17,6 +17,8 @@ from lxml import etree
 from PIL import Image
 from slugify import slugify
 
+from prdl.kbhit import KBHit
+
 logger = logging.getLogger(__name__)
 ch = logging.StreamHandler()
 ch.setLevel(logging.INFO)
@@ -158,8 +160,9 @@ class PrDl(LoggingClass):
         self.save_all: bool = False
 
     def confirm_save(self) -> bool:
+        kb = KBHit()
         puts(colored.red("Save? ([y]es / [n]o / [q]uit)"))
-        key = input()
+        key = kb.getch()
         if key == "q":
             self.logger.info("Good bye.")
             exit()
