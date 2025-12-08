@@ -171,9 +171,8 @@ class PrDl(LoggingClass):
     def get_resource_path(rel_path):
         return os.path.abspath(os.path.join(os.path.dirname(__file__), rel_path))
 
-    def download_podcast(self, podcast, current=0, total=0):
+    def download_podcast(self, podcast: PrDlPodcast, current=0, total=0):
         self.logger.debug(f"Podcast found [{current}/{podcast}]: {podcast}")
-        podcast = PrDlPodcast(**podcast, track_number=current)
         puts(colored.blue("[" + str(current) + "/" + str(total) + "]"))
         puts(colored.white("Title: " + podcast.title, bold=True))
         puts(colored.white("Urk: " + podcast.url))
@@ -307,40 +306,41 @@ class PrDlCrawl(PrDl):
         return [match.start() for match in re.finditer(pattern, data)]
 
     @staticmethod
-    def get_podcasts_v2(page_data: str) -> list[dict] | None:
+    def get_podcasts_v2(page_data: str, url:str = "") -> list[PrDlPodcast]:
         data = None
-        # page_data = page_data.replace('\\"', '"')
-        # page_data = page_data.replace('\\\\"', '')
-        # page_data = page_data.replace(':null,', ':"",')
-        for start in PrDlCrawl.get_occurrences("self\.__next_f\.push", page_data):
-            page_data_part = page_data[start+19:]
-            end = page_data_part.find(")</script>")
-            # for end in [match.start() for match in re.finditer("</script>", page_data_part)]:
-            page_data_part = page_data_part[:end]
-            mp3s = PrDlCrawl.get_occurrences(".mp3", page_data_part)
-            if mp3s:
-                try:
-                    data = json.loads(page_data_part)
-                    print(data)
-                    # break
-                except json.decoder.JSONDecodeError:
-                    pass
-        # if page_data.find('\\"podcasts\\":') > -1:
-        #     page_data = page_data.split('\\"podcasts\\":')[1]
-        #     page_data = page_data.replace('\\"', '"')
-        #     page_data = page_data.replace('\\\\"', '')
-        #     page_data = page_data.replace(':null,', ':"",')
-        #     positions = [match.start() for match in re.finditer("]", page_data)]
-        #     for position in positions:
-        #         data_json = page_data[:position + 1]
-        #         try:
-        #             data = json.loads(data_json)
-        #             break
-        #         except json.decoder.JSONDecodeError:
-        #             pass
-        return data
+        podcasts_list = []
+        for keyword in ["podcasts","podcastEpisodes"]:
+            for page_data_part in page_data.split(f"\\\"{keyword}\\\":")[1:]:
+                page_data_part = page_data_part.replace('\\"', '"')
+                page_data_part = page_data_part.replace('\\\\"', '')
+                page_data_part = page_data_part.replace(':null,', ':"",')
+                for position in PrDlCrawl.get_occurrences("]", page_data_part):
+                    data_json = page_data_part[:position + 1]
+                    try:
+                        data_part = json.loads(data_json)
+                        if data is None:
+                            data = data_part
+                        else:
+                            data = data + data_part
+                        break
+                    except json.decoder.JSONDecodeError:
+                        pass
+        track_number = 0
+        for podcast in data:
+            podcasts_list.append(PrDlPodcast(
+                article_url=url,
+                description=podcast.get("description", ""),
+                file_name=podcast.get("title"),
+                thumb=podcast.get("cover"),
+                title=podcast.get("title"),
+                uid=podcast.get("id"),
+                url=podcast.get("url"),
+                track_number = track_number,
+            ))
+            track_number += 1
+        return podcasts_list
 
-    def get_podcasts(self, html_dom, article_url="") -> list[dict]:
+    def get_podcasts(self, html_dom, article_url="") -> list[PrDlPodcast]:
         podcasts_list = []
         html_title = html_dom.xpath("//title")[0].text.strip()
         for art in self.get_articles(html_dom):
@@ -369,14 +369,14 @@ class PrDlCrawl(PrDl):
                         "file_name": self.get_filename(title),
                         "thumb": thumb,
                     }
-                    podcasts_list.append(podcast)
+                    podcasts_list.append(PrDlPodcast(**podcast))
                 except Exception as e:
                     self.logger.error(e)
         return podcasts_list
 
-    def get_podcasts_list(self):
+    def get_podcasts_list(self) -> list[PrDlPodcast] | None:
         html = self.get_web_page_content(self.url)
-        downloads_list = self.get_podcasts_v2(html)
+        downloads_list = self.get_podcasts_v2(html, self.url)
         if not downloads_list:
             downloads_list = self.get_podcasts(etree.HTML(html), self.url)
         return downloads_list
@@ -384,6 +384,6 @@ class PrDlCrawl(PrDl):
     def start(self):
         podcasts_list = self.get_podcasts_list()
         a = 1
-        for k in podcasts_list:
-            self.download_podcast(podcasts_list[k], a, len(podcasts_list))
+        for podcast_episode in podcasts_list:
+            self.download_podcast(podcast_episode, a, len(podcasts_list))
             a += 1
