@@ -27,6 +27,7 @@ dev = [
     "mypy",
     "pytest",
     "pipreqs",
+    "lxml-stubs",
 ]
 
 [project.scripts]

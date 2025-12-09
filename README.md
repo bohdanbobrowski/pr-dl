@@ -1,3 +1,5 @@
+<img src="./assets/prdl_logo_web.svg" alt="PR-DL" width="300" />
+
 PR-DL: Polskie Radio DownLoader
 ==
 

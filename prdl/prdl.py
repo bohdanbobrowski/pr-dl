@@ -10,9 +10,9 @@ import urllib.request
 import eyed3  # type: ignore
 import requests
 import validators
-from clint.textui import colored, puts
-from download import download
-from eyed3.id3.frames import ImageFrame
+from clint.textui import colored, puts  # type: ignore
+from download import download  # type: ignore
+from eyed3.id3.frames import ImageFrame  # type: ignore
 from lxml import etree
 from PIL import Image
 from slugify import slugify
@@ -45,11 +45,11 @@ class PrDlPodcast(LoggingClass):
         track_number=None,
     ):
         super().__init__()
-        self.url = url
-        self.uid = uid
-        self.article_url = article_url
-        self.title = title
-        self.description = description
+        self.url: str = str(url)
+        self.uid: str = uid
+        self.article_url: str = article_url
+        self.title: str = title
+        self.description: str = description
         self.file_name = self.get_filename()
         self.file_size = 0
         self.thumbnail_url = thumb
@@ -65,15 +65,17 @@ class PrDlPodcast(LoggingClass):
     def url_hash(self) -> str:
         return hashlib.md5(self.url.encode()).hexdigest()
 
-    def get_filename(self, suffix=""):
-        file_name = slugify(self.title.replace("ł", "l").replace("Ł", "L"))
+    def get_filename(self, file_name: str = "", suffix=""):
+        if file_name == "":
+            file_name = slugify(self.title.replace("ł", "l").replace("Ł", "L"))
         if len(file_name) > 100:
             file_name = file_name[0:100]
         if len(file_name) == 0:
             file_name = self.url_hash
         if suffix:
             file_name = file_name + "_" + str(suffix)
-        file_name = file_name + ".mp3"
+        if not file_name.endswith(".mp3"):
+            file_name = file_name + ".mp3"
         return file_name
 
     def set_thumbnail_file_name(self):
@@ -89,9 +91,9 @@ class PrDlPodcast(LoggingClass):
             self.thumbnail_delete_after = False
             self.thumbnail_file_name = self.thumbnail_default_fn
 
-    def get_default_thumbnail(self):
-        thumbnail_path = pathlib.Path(__file__).parent.resolve()
-        return os.path.join(thumbnail_path, "polskieradio_logo_cover.jpg")
+    @staticmethod
+    def get_default_thumbnail() -> str:
+        return os.path.join(pathlib.Path(__file__).parent.resolve(), "prdl_logo.jpg")
 
     def download_thumbnail(self):
         fpath = os.getcwd() + "/" + str(self.thumbnail_file_name).strip()
@@ -153,11 +155,11 @@ class PrDlPodcast(LoggingClass):
 
 
 class PrDl(LoggingClass):
-    def __init__(self):
+    def __init__(self, phrase: str = "", forced_search: bool = False, save_all: bool = False):
         super().__init__()
-        self.phrase: str = ""
-        self.forced_search: bool = False
-        self.save_all: bool = False
+        self.phrase: str = phrase
+        self.forced_search: bool = forced_search
+        self.save_all: bool = save_all
 
     def confirm_save(self) -> bool:
         kb = KBHit()
@@ -184,7 +186,7 @@ class PrDl(LoggingClass):
             puts(colored.white("Thubnail: " + podcast.thumbnail_url))
         x = 1
         while os.path.isfile(podcast.file_name):
-            podcast.file_name = podcast.get_filename(str(x))
+            podcast.file_name = podcast.get_filename(suffix=str(x))
             x += 1
         else:
             if self.save_all or self.confirm_save():
