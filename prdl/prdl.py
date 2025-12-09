@@ -18,12 +18,11 @@ from lxml import etree
 from PIL import Image
 from slugify import slugify
 
-from prdl.logger import Logger
 from prdl.kbhit import KBHit
+from prdl.logger import Logger
 
 
-
-class PrDlPodcast():
+class PrDlPodcast:
     def __init__(
         self,
         article_url: str,
@@ -104,7 +103,7 @@ class PrDlPodcast():
                 urllib.request.urlretrieve(self.thumbnail_url, fpath)
                 size = (500, 500)
                 image = Image.open(fpath)
-                image.thumbnail(size, Image.LANCZOS)
+                image.thumbnail(size, Image.Resampling.LANCZOS)
                 background = Image.open(self.thumbnail_default_fn)
                 background.paste(
                     image,
@@ -158,7 +157,7 @@ class PrDlPodcast():
                         os.remove(self.thumbnail_file_name)
 
 
-class PrDl():
+class PrDl:
     def __init__(
         self,
         phrase: str = "",
