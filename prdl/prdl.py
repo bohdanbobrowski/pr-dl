@@ -11,7 +11,7 @@ import eyed3  # type: ignore
 import requests
 import validators
 from clint.textui import colored, puts  # type: ignore
-from download import download  # type: ignore
+from dlbar import DownloadBar  # type: ignore
 from eyed3.id3.frames import ImageFrame  # type: ignore
 from lxml import etree
 from PIL import Image
@@ -93,7 +93,7 @@ class PrDlPodcast(LoggingClass):
 
     @staticmethod
     def get_default_thumbnail() -> str:
-        return os.path.join(pathlib.Path(__file__).parent.resolve(), "..", "assets", "prdl_logo.jpg")
+        return os.path.join(pathlib.Path(__file__).parent.resolve(), "prdl_logo.jpg")
 
     def download_thumbnail(self):
         fpath = os.getcwd() + "/" + str(self.thumbnail_file_name).strip()
@@ -190,13 +190,11 @@ class PrDl(LoggingClass):
             x += 1
         else:
             if self.save_all or self.confirm_save():
-                try:
-                    download(podcast.url, podcast.file_name)
-                    podcast.id3tag()
-                    podcast.download_thumbnail()
-                    podcast.add_thumbnail()
-                except RuntimeError as e:
-                    self.logger.error(e)
+                download_bar = DownloadBar()
+                download_bar.download(url=podcast.url, dest=podcast.file_name, title=f"Downloading {podcast.file_name}")
+                podcast.id3tag()
+                podcast.download_thumbnail()
+                podcast.add_thumbnail()
 
     @staticmethod
     def get_web_page_content(url):
@@ -329,6 +327,33 @@ class PrDlCrawl(PrDl):
                         break
                     except json.decoder.JSONDecodeError:
                         pass
+        if data is None and page_data.find('{"props":{"pageProps":{"data":') > -1:
+            page_data_part = page_data.split('{"props":')[1]
+            for position in PrDlCrawl.get_occurrences("}", page_data_part):
+                data_json = page_data_part[: position + 1]
+                try:
+                    data_part = json.loads(data_json)
+                    podcast_dict = {
+                        "article_url": url,
+                        "title": data_part.get("pageProps", {}).get("data", {}).get("articleData", {}).get("title", []),
+                        "file_name": data_part.get("pageProps", {})
+                        .get("data", {})
+                        .get("articleData", {})
+                        .get("title", []),
+                    }
+                    for attachment in (
+                        data_part.get("pageProps", {}).get("data", {}).get("articleData", {}).get("attachments", [])
+                    ):
+                        if attachment.get("fileType") == "Audio":
+                            podcast_dict["url"] = attachment.get("file")
+                            podcast_dict["uid"] = attachment.get("fileUid")
+                            podcast_dict["description"] = attachment.get("description")
+                        if attachment.get("fileType") == "Image":
+                            podcast_dict["thumb"] = attachment.get("file")
+                    if "url" and "thumb" in podcast_dict:
+                        podcasts_list.append(PrDlPodcast(**podcast_dict))
+                except json.decoder.JSONDecodeError:
+                    pass
         track_number = 0
         if data:
             for podcast in data:

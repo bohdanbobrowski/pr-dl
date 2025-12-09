@@ -24,7 +24,7 @@ class TestDefaultCrawler:
         # When
         result = PrDlCrawl.get_podcasts_v2(given_page_data)
         # Then
-        assert result is not None
+        assert len(result) > 0
 
     def test_prdl_get_podcasts_v2_page3(self):
         # Given
@@ -33,4 +33,14 @@ class TestDefaultCrawler:
         # When
         result = PrDlCrawl.get_podcasts_v2(given_page_data)
         # Then
-        assert result is not None
+        assert len(result) > 0
+
+    def test_prdl_get_podcasts_v2_jedynka(self):
+        """url: https://jedynka.polskieradio.pl/artykul/810503,Weterani-powstania-czyli-oczko-w-g%C5%82owie-Pi%C5%82sudskiego-"""
+        # Given
+        with open("./tests/data/page4.html") as f:
+            given_page_data = f.read()
+        # When
+        result = PrDlCrawl.get_podcasts_v2(given_page_data)
+        # Then
+        assert len(result) > 0

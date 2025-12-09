@@ -6,7 +6,7 @@ a = Analysis(
     pathex=['.'],
     binaries=[],
     datas=[
-        (os.path.abspath('./assets/prdl_logo.jpg'), './assets/'),
+        (os.path.abspath('./prdl/prdl_logo.jpg'), './prdl/'),
     ],
     hiddenimports=[],
     hookspath=[],

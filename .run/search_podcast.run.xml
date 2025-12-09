@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="download_podcasts" type="PythonConfigurationType" factoryName="Python">
+  <configuration default="false" name="search_podcast" type="PythonConfigurationType" factoryName="Python">
     <module name="pr-dl" />
     <option name="ENV_FILES" value="" />
     <option name="INTERPRETER_OPTIONS" value="" />
@@ -15,7 +15,7 @@
     <option name="ADD_SOURCE_ROOTS" value="true" />
     <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
     <option name="SCRIPT_NAME" value="prdl.py" />
-    <option name="PARAMETERS" value="https://www.polskieradio.pl/podcast/ziemia-obiecana-wladyslaw-stanislaw-reymont,594" />
+    <option name="PARAMETERS" value="Zapasiewicz" />
     <option name="SHOW_COMMAND_LINE" value="false" />
     <option name="EMULATE_TERMINAL" value="true" />
     <option name="MODULE_MODE" value="false" />

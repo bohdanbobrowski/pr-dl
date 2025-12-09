@@ -16,7 +16,7 @@ dependencies = [
     "pycurl",
     "Pillow",
     "clint",
-    "download",
+    "dlbar",
     "validators",
     "Requests",
 ]
