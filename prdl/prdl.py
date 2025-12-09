@@ -422,7 +422,7 @@ class PrDlCrawl(PrDl):
         downloads_list = self.get_podcasts_v2(html, self.url)
         if not downloads_list:
             downloads_list = self.get_podcasts(etree.HTML(html), self.url)
-        return downloads_list
+        return list(set(downloads_list))
 
     def start(self):
         podcasts_list = self.get_podcasts_list()
