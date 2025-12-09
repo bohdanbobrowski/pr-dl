@@ -7,7 +7,7 @@ import re
 import urllib
 import urllib.request
 
-import eyed3
+import eyed3  # type: ignore
 import requests
 import validators
 from clint.textui import colored, puts
@@ -189,7 +189,7 @@ class PrDl(LoggingClass):
         else:
             if self.save_all or self.confirm_save():
                 try:
-                    download(podcast.url, "./" + podcast.file_name)
+                    download(podcast.url, podcast.file_name)
                     podcast.id3tag()
                     podcast.download_thumbnail()
                     podcast.add_thumbnail()
@@ -209,22 +209,21 @@ class PrDlSearch(PrDl):
         self.forced_search = forced_search
         self.save_all = save_all
 
-    def get_files(self, results):
-        files = {}
+    def get_files(self, results) -> list[PrDlPodcast]:
+        files = []
         for r in results:
             self.logger.info(f"Analyzing: {r['url']}")
             crawler = PrDlCrawl(
                 url=f"https://www.polskieradio.pl{r['url']}",
                 save_all=self.save_all,
             )
-            files_on_page = crawler.get_podcasts_list()
-            for f in files_on_page:
+            for f in crawler.get_podcasts_list():
                 if r["image"]:
                     default_thumb = f"https:{r['image']}"
-                    if not files_on_page[f]["thumb"]:
-                        files_on_page[f]["thumb"] = default_thumb
-                if not self.forced_search or self.phrase in files_on_page[f]["title"].lower():
-                    files[f] = files_on_page[f]
+                    if not f.thumbnail_file_name:
+                        f.thumbnail_file_name = default_thumb
+                if not self.forced_search or self.phrase in f.title.lower():
+                    files.append(f)
         return files
 
     def _get_search_url(self, page=1):
@@ -238,10 +237,10 @@ class PrDlSearch(PrDl):
         self.logger.info(f"Downloading: {search_url}")
         return search_url
 
-    def download_podcasts_list(self, podcasts):
+    def download_podcasts_list(self, podcasts: list[PrDlPodcast]):
         a = 1
-        for k in podcasts:
-            self.download_podcast(podcasts[k], a, len(podcasts))
+        for p in podcasts:
+            self.download_podcast(p, a, len(podcasts))
             a += 1
 
     def start(self):
@@ -305,20 +304,20 @@ class PrDlCrawl(PrDl):
             return None
 
     @staticmethod
-    def get_occurrences(pattern:str, data) -> list[int]:
+    def get_occurrences(pattern: str, data) -> list[int]:
         return [match.start() for match in re.finditer(pattern, data)]
 
     @staticmethod
-    def get_podcasts_v2(page_data: str, url:str = "") -> list[PrDlPodcast]:
+    def get_podcasts_v2(page_data: str, url: str = "") -> list[PrDlPodcast]:
         data = None
         podcasts_list = []
-        for keyword in ["podcasts","podcastEpisodes"]:
-            for page_data_part in page_data.split(f"\\\"{keyword}\\\":")[1:]:
+        for keyword in ["podcasts", "podcastEpisodes"]:
+            for page_data_part in page_data.split(f'\\"{keyword}\\":')[1:]:
                 page_data_part = page_data_part.replace('\\"', '"')
-                page_data_part = page_data_part.replace('\\\\"', '')
-                page_data_part = page_data_part.replace(':null,', ':"",')
+                page_data_part = page_data_part.replace('\\\\"', "")
+                page_data_part = page_data_part.replace(":null,", ':"",')
                 for position in PrDlCrawl.get_occurrences("]", page_data_part):
-                    data_json = page_data_part[:position + 1]
+                    data_json = page_data_part[: position + 1]
                     try:
                         data_part = json.loads(data_json)
                         if data is None:
@@ -331,16 +330,18 @@ class PrDlCrawl(PrDl):
         track_number = 0
         if data:
             for podcast in data:
-                podcasts_list.append(PrDlPodcast(
-                    article_url=url,
-                    description=podcast.get("description", ""),
-                    file_name=podcast.get("title"),
-                    thumb=podcast.get("cover"),
-                    title=podcast.get("title"),
-                    uid=podcast.get("id"),
-                    url=podcast.get("url"),
-                    track_number = track_number,
-                ))
+                podcasts_list.append(
+                    PrDlPodcast(
+                        article_url=url,
+                        description=podcast.get("description", ""),
+                        file_name=podcast.get("title"),
+                        thumb=podcast.get("coverUrl", podcast.get("imageUrl")),
+                        title=podcast.get("title"),
+                        uid=podcast.get("id"),
+                        url=podcast.get("url"),
+                        track_number=track_number,
+                    )
+                )
                 track_number += 1
         return podcasts_list
 
@@ -378,7 +379,7 @@ class PrDlCrawl(PrDl):
                     self.logger.error(e)
         return podcasts_list
 
-    def get_podcasts_list(self) -> list[PrDlPodcast] | None:
+    def get_podcasts_list(self) -> list[PrDlPodcast]:
         html = self.get_web_page_content(self.url)
         downloads_list = self.get_podcasts_v2(html, self.url)
         if not downloads_list:
