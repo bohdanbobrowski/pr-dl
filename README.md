@@ -31,13 +31,22 @@ Usage:
 Examples:
 ====
 
-    prdl https://www.polskieradio.pl/8/755/Artykul/426557 -a
+Single url:
+
+    prdl https://www.polskieradio.pl/8/755/Artykul/426557
+
+Use `-a` argument to download all podcasts:
 
     prdl https://www.polskieradio.pl/podcast/ziemia-obiecana-wladyslaw-stanislaw-reymont,594 -a
 
+You can also search using Polskie Radio search engine:
+
     prdl Wańkowicz
- 
-    prdl "Sergiusz Piasecki" -f -a -d
+
+I you add `-f` script fill "force" by searching phrase (case insensitive) in given results: 
+
+    prdl "Sergiusz Piasecki" -f
+
 
 Building:
 ====
