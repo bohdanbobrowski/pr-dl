@@ -1,4 +1,5 @@
 import hashlib
+import html
 import json
 import logging
 import os
@@ -348,6 +349,40 @@ class PrDlCrawl(PrDl):
     def get_occurrences(pattern: str, data) -> list[int]:
         return [match.start() for match in re.finditer(pattern, data)]
 
+    def get_podcasts(self, html_dom, article_url="") -> list[PrDlPodcast]:
+        podcasts_list = []
+        html_title = html_dom.xpath("//title")[0].text.strip()
+        for art in self.get_articles(html_dom):
+            podcast = art.xpath(".//*[@data-media]")
+            thumb = self.get_thumb(html_dom, art)
+            for p in podcast:
+                try:
+                    pdata_media = json.loads(p.attrib.get("data-media"))
+                    uid = hashlib.md5(pdata_media["file"].encode()).hexdigest()
+                    try:
+                        title = art.xpath(".//h1[contains(@class, 'title')]")[0].text.strip()
+                        if not title:
+                            title = art.xpath(".//h1[contains(@class, 'title')]/a")[0].text.strip()
+                    except IndexError:
+                        title = html_title + " - " + urllib.parse.unquote(pdata_media["title"]).strip()
+                    try:
+                        description = urllib.parse.unquote(pdata_media["desc"]).strip()
+                    except IndexError:
+                        description = title
+                    podcast = {
+                        "url": "https:" + pdata_media["file"],
+                        "uid": uid,
+                        "article_url": article_url,
+                        "title": title,
+                        "description": description,
+                        "file_name": self.get_filename(title),
+                        "thumb": thumb,
+                    }
+                    podcasts_list.append(PrDlPodcast(**podcast))
+                except Exception as e:
+                    self.logger.error(e)
+        return podcasts_list
+
     @staticmethod
     def get_podcasts_v2(page_data: str, url: str = "") -> list[PrDlPodcast]:
         data = None
@@ -421,38 +456,26 @@ class PrDlCrawl(PrDl):
                 track_number += 1
         return podcasts_list
 
-    def get_podcasts(self, html_dom, article_url="") -> list[PrDlPodcast]:
+    @staticmethod
+    def get_podcasts_data_media(page_data: str, article_url: str) -> list[PrDlPodcast]:
         podcasts_list = []
-        html_title = html_dom.xpath("//title")[0].text.strip()
-        for art in self.get_articles(html_dom):
-            podcast = art.xpath(".//*[@data-media]")
-            thumb = self.get_thumb(html_dom, art)
-            for p in podcast:
-                try:
-                    pdata_media = json.loads(p.attrib.get("data-media"))
-                    uid = hashlib.md5(pdata_media["file"].encode()).hexdigest()
-                    try:
-                        title = art.xpath(".//h1[contains(@class, 'title')]")[0].text.strip()
-                        if not title:
-                            title = art.xpath(".//h1[contains(@class, 'title')]/a")[0].text.strip()
-                    except IndexError:
-                        title = html_title + " - " + urllib.parse.unquote(pdata_media["title"]).strip()
-                    try:
-                        description = urllib.parse.unquote(pdata_media["desc"]).strip()
-                    except IndexError:
-                        description = title
-                    podcast = {
-                        "url": "https:" + pdata_media["file"],
-                        "uid": uid,
-                        "article_url": article_url,
-                        "title": title,
-                        "description": description,
-                        "file_name": self.get_filename(title),
-                        "thumb": thumb,
-                    }
-                    podcasts_list.append(PrDlPodcast(**podcast))
-                except Exception as e:
-                    self.logger.error(e)
+        for m in re.findall("data-media=([^}]+})", page_data):
+            podcast_str = html.unescape(m[2:].replace("\\u0026quot;", '"'))
+            try:
+                podcast = json.loads(podcast_str)
+                podcast_dict = {
+                    "url": "https:" + podcast.get("file", ""),
+                    "uid": podcast.get("uid"),
+                    "article_url": article_url,
+                    "title": urllib.parse.unquote(podcast.get("title")),
+                    "description": urllib.parse.unquote(podcast.get("desc")),
+                    "file_name": urllib.parse.unquote(podcast.get("title")),
+                    "thumb": "",
+                }
+                podcasts_list.append(PrDlPodcast(**podcast_dict))
+            except json.decoder.JSONDecodeError:
+                pass
+        podcasts_list = list(set(podcasts_list))
         return podcasts_list
 
     def get_podcasts_list(self) -> list[PrDlPodcast]:
@@ -460,6 +483,7 @@ class PrDlCrawl(PrDl):
         downloads_list = self.get_podcasts_v2(html, self.url)
         if not downloads_list:
             downloads_list = self.get_podcasts(etree.HTML(html), self.url)
+            downloads_list += self.get_podcasts_data_media(html, self.url)
         return list(set(downloads_list))
 
     def start(self):
