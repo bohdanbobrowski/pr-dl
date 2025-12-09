@@ -61,6 +61,7 @@ POLSKIE_RADIO_SUBDOMAINS = [
     "www.srep.embedder.polskieradio.pl",
     "www.trojka.polskieradio.pl",
     "www.trojkapyta.polskieradio.pl",
+    "polskieradio24.pl",
 ]
 
 

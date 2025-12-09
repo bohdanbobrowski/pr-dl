@@ -14,17 +14,19 @@ Usage:
 ====
 
     prdl --help
-    usage: prdl [-h] [-a] [-f] url_or_search
+    usage: prdl [-h] [-a] [-d] [-f] [-c] url_or_search
     
     Polish Radio Downloader
     
     positional arguments:
-      url_or_search  Url or search phrase.
+      url_or_search         Url or search phrase.
     
     options:
-      -h, --help     show this help message and exit
-      -a, --all      Save all podcasts without confirmation.
-      -f, --forced   Don't trust PR searchengine - show only results with given keyword.
+      -h, --help            show this help message and exit
+      -a, --all             Save all podcasts without confirmation.
+      -d, --debug           Turn on debug mode.
+      -f, --forced          Don't trust PR searchengine - show only results with given keyword.
+      -c, --cache           Enable local cache.
 
 Examples:
 ====
