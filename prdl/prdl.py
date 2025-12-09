@@ -459,6 +459,10 @@ class PrDlCrawl(PrDl):
     @staticmethod
     def get_podcasts_data_media(page_data: str, article_url: str) -> list[PrDlPodcast]:
         podcasts_list = []
+        try:
+            thumbnail = re.findall('property="og:image" content="([^"]+)"', page_data)[0]
+        except IndexError:
+            thumbnail = ""
         for m in re.findall("data-media=([^}]+})", page_data):
             podcast_str = html.unescape(m[2:].replace("\\u0026quot;", '"'))
             try:
@@ -470,7 +474,7 @@ class PrDlCrawl(PrDl):
                     "title": urllib.parse.unquote(podcast.get("title")),
                     "description": urllib.parse.unquote(podcast.get("desc")),
                     "file_name": urllib.parse.unquote(podcast.get("title")),
-                    "thumb": "",
+                    "thumb": thumbnail,
                 }
                 podcasts_list.append(PrDlPodcast(**podcast_dict))
             except json.decoder.JSONDecodeError:
