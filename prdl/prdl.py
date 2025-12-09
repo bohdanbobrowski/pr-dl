@@ -93,7 +93,7 @@ class PrDlPodcast(LoggingClass):
 
     @staticmethod
     def get_default_thumbnail() -> str:
-        return os.path.join(pathlib.Path(__file__).parent.resolve(), "prdl_logo.jpg")
+        return os.path.join(pathlib.Path(__file__).parent.resolve(), "..", "assets", "prdl_logo.jpg")
 
     def download_thumbnail(self):
         fpath = os.getcwd() + "/" + str(self.thumbnail_file_name).strip()
@@ -101,7 +101,7 @@ class PrDlPodcast(LoggingClass):
             os.remove(fpath)
         if self.thumbnail_url:
             urllib.request.urlretrieve(self.thumbnail_url, fpath)
-            size = (200, 200)
+            size = (500, 500)
             image = Image.open(fpath)
             image.thumbnail(size, Image.LANCZOS)
             background = Image.open(self.thumbnail_default_fn)

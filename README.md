@@ -34,3 +34,9 @@ Examples:
     prdl Wańkowicz
 
     prdl "Sergiusz Piasecki" -f
+
+Building:
+====
+
+    pyinstaller prdl.spec
+
