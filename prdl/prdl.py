@@ -4,6 +4,7 @@ import logging
 import os
 import pathlib
 import re
+import sys
 import urllib
 import urllib.request
 
@@ -176,7 +177,7 @@ class PrDl(LoggingClass):
         key = kb.getch()
         if key == "q":
             self.logger.info("Good bye.")
-            exit()
+            sys.exit()
         if key in ["y"]:
             return True
         return False
