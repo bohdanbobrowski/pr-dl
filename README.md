@@ -39,4 +39,3 @@ Building:
 ====
 
     pyinstaller prdl.spec
-
