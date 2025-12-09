@@ -65,6 +65,15 @@ class PrDlPodcast(LoggingClass):
     def url_hash(self) -> str:
         return hashlib.md5(self.url.encode()).hexdigest()
 
+    def __hash__(self):
+        return hash(self.url_hash)
+
+    def __eq__(self, other):
+        return self.url_hash == other.url_hash
+
+    def __str__(self):
+        return self.url
+
     def get_filename(self, file_name: str = "", suffix=""):
         if file_name == "":
             file_name = slugify(self.title.replace("ł", "l").replace("Ł", "L"))
@@ -179,9 +188,9 @@ class PrDl(LoggingClass):
     def download_podcast(self, podcast: PrDlPodcast, current=0, total=0):
         self.logger.debug(f"Podcast found [{current}/{podcast}]: {podcast}")
         puts(colored.blue("[" + str(current) + "/" + str(total) + "]"))
-        puts(colored.white("Title: " + podcast.title, bold=True))
-        puts(colored.white("Url: " + podcast.url))
-        puts(colored.white("File: " + podcast.file_name))
+        puts(colored.white(f"Title: {podcast.title}", bold=True))
+        puts(colored.white(f"Url: {podcast.url} ({podcast.__hash__()})"))
+        puts(colored.white(f"File: {podcast.file_name}"))
         if podcast.thumbnail_url:
             puts(colored.white("Thubnail: " + podcast.thumbnail_url))
         x = 1
@@ -224,7 +233,7 @@ class PrDlSearch(PrDl):
                         f.thumbnail_file_name = default_thumb
                 if not self.forced_search or self.phrase in f.title.lower():
                     files.append(f)
-        return files
+        return list(set(files))
 
     def _get_search_url(self, page=1):
         search_url = (
@@ -246,8 +255,8 @@ class PrDlSearch(PrDl):
     def start(self):
         response = json.loads(urllib.request.urlopen(self._get_search_url()).read())
         pages = round(int(response["count"]) / int(response["pageSize"]))
-        podcasts = self.get_files(response["results"])
-        self.download_podcasts_list(podcasts)
+        podcasts_list = self.get_files(response["results"])
+        self.download_podcasts_list(podcasts_list)
         if pages > 1:
             for p in range(2, pages):
                 self.logger.info(f"Page {p}/{pages}:")
@@ -350,8 +359,10 @@ class PrDlCrawl(PrDl):
                             podcast_dict["description"] = attachment.get("description")
                         if attachment.get("fileType") == "Image":
                             podcast_dict["thumb"] = attachment.get("file")
-                    if "url" and "thumb" in podcast_dict:
+                    try:
                         podcasts_list.append(PrDlPodcast(**podcast_dict))
+                    except TypeError:
+                        pass
                 except json.decoder.JSONDecodeError:
                     pass
         track_number = 0
@@ -415,6 +426,9 @@ class PrDlCrawl(PrDl):
 
     def start(self):
         podcasts_list = self.get_podcasts_list()
+        self.logger.info(len(podcasts_list))
+        podcasts_list = list(set(podcasts_list))
+        self.logger.info(len(podcasts_list))
         a = 1
         for podcast_episode in podcasts_list:
             self.download_podcast(podcast_episode, a, len(podcasts_list))
