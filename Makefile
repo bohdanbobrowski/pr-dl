@@ -12,3 +12,9 @@ check:
 
 test:
 	pytest tests
+
+test_coverage:
+	pytest --cov=prdl ./tests
+
+test_coverage_html:
+	pytest --cov=prdl --cov-report=html ./tests
