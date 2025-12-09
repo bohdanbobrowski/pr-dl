@@ -31,12 +31,19 @@ def main():
         action="store_true",
         help="Don't trust PR searchengine - show only results with given keyword.",
     )
+    parser.add_argument(
+        "-c",
+        "--cache",
+        action="store_true",
+        help="Enable local cache.",
+    )
     args = parser.parse_args()
     if is_url_valid(args.url_or_search):
         polish_radio_downloader = PrDlCrawl(
             url=args.url_or_search,
             save_all=args.all,
             debug=args.debug,
+            cache=args.cache,
         )
     else:
         polish_radio_downloader = PrDlSearch(
@@ -44,6 +51,7 @@ def main():
             save_all=args.all,
             forced_search=args.forced,
             debug=args.debug,
+            cache=args.cache,
         )
     polish_radio_downloader.start()
 

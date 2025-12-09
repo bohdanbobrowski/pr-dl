@@ -19,6 +19,7 @@ dependencies = [
     "dlbar",
     "validators",
     "Requests",
+    "hishel",
 ]
 
 [project.optional-dependencies]

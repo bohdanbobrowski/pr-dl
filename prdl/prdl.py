@@ -9,11 +9,12 @@ import urllib
 import urllib.request
 
 import eyed3  # type: ignore
-import requests
+import hishel
 import validators
 from clint.textui import colored, puts  # type: ignore
 from dlbar import DownloadBar  # type: ignore
 from eyed3.id3.frames import ImageFrame  # type: ignore
+from httpx import Client
 from lxml import etree
 from PIL import Image
 from slugify import slugify
@@ -165,6 +166,7 @@ class PrDl:
         forced_search: bool = False,
         save_all: bool = False,
         debug: bool = False,
+        cache: bool = False,
     ):
         super().__init__()
         self.phrase: str = phrase
@@ -174,6 +176,25 @@ class PrDl:
         self.downloaded_podcasts: set[PrDlPodcast] = set()
         self.debug: bool = debug
         self.logger = Logger(name=self.__class__.__name__)
+        self.cache: bool = cache
+        self.httpx_client = Client(
+            timeout=20,
+        )
+        if self.cache:
+            self.logger.info("Caching enabled")
+            cache_controller = hishel.Controller(
+                force_cache=True,
+                cache_private=True,
+                cacheable_methods=["GET"],
+            )
+            cache_storage = hishel.FileStorage(
+                ttl=80000,
+            )
+            self.httpx_client = hishel.CacheClient(
+                controller=cache_controller,
+                storage=cache_storage,
+                timeout=20,
+            )
 
     def confirm_save(self) -> bool:
         kb = KBHit()
@@ -213,10 +234,12 @@ class PrDl:
                 if podcast.download_thumbnail():
                     podcast.add_thumbnail()
 
-    @staticmethod
-    def get_web_page_content(url):
-        response = requests.get(url)
+    def get_web_page_content(self, url: str):
+        response = self.httpx_client.get(url)
         return response.text
+
+    def start(self):
+        self.logger.level = logging.DEBUG if self.debug else logging.INFO
 
 
 class PrDlSearch(PrDl):
@@ -229,13 +252,21 @@ class PrDlSearch(PrDl):
                 save_all=self.save_all,
                 debug=self.debug,
             )
-            for f in crawler.get_podcasts_list():
+            crawler.downloaded_podcasts = self.downloaded_podcasts
+            podcasts_list = crawler.get_podcasts_list()
+            for f in podcasts_list:
                 if r["image"]:
                     default_thumb = f"https:{r['image']}"
                     if not f.thumbnail_file_name:
                         f.thumbnail_file_name = default_thumb
-                if not self.forced_search or self.phrase in f.title.lower():
+                if (
+                    not self.forced_search
+                    or self.phrase.lower() in f.title.lower()
+                    or self.phrase.lower() in f.description.lower()
+                ):
                     files.append(f)
+                else:
+                    self.logger.debug(f"Skipping {f.title} - {f.description}")
         return list(set(files))
 
     def _get_search_url(self, page=1):
@@ -250,23 +281,24 @@ class PrDlSearch(PrDl):
         return search_url
 
     def download_podcasts_list(self, podcasts: list[PrDlPodcast]):
-        a = 1
-        for p in podcasts:
-            self.download_podcast(p, a, len(podcasts))
-            a += 1
+        cnt = 1
+        for podcast in podcasts:
+            if podcast not in self.downloaded_podcasts:
+                self.download_podcast(podcast, cnt, len(podcasts))
+            cnt += 1
 
     def start(self):
-        self.logger.level = logging.DEBUG if self.debug else logging.INFO
+        super().start()
         self.logger.debug(f"Phrase: {self.phrase}")
         self.logger.debug(f"PrDl Class {type(self)}")
-        response = json.loads(urllib.request.urlopen(self._get_search_url()).read())
+        response = self.httpx_client.get(self._get_search_url()).json()
         pages = round(int(response["count"]) / int(response["pageSize"]))
         podcasts_list = self.get_files(response["results"])
         self.download_podcasts_list(podcasts_list)
         if pages > 1:
             for p in range(2, pages):
                 self.logger.info(f"Page {p}/{pages}:")
-                response = json.loads(urllib.request.urlopen(self._get_search_url(p)).read())
+                response = self.httpx_client.get(self._get_search_url(p)).json()
                 podcasts = self.get_files(response["results"])
                 self.download_podcasts_list(podcasts)
 
@@ -342,28 +374,34 @@ class PrDlCrawl(PrDl):
                 data_json = page_data_part[: position + 1]
                 try:
                     data_part = json.loads(data_json)
-                    podcast_dict = {
-                        "article_url": url,
-                        "title": data_part.get("pageProps", {}).get("data", {}).get("articleData", {}).get("title", []),
-                        "file_name": data_part.get("pageProps", {})
-                        .get("data", {})
-                        .get("articleData", {})
-                        .get("title", []),
-                    }
-                    for attachment in (
-                        data_part.get("pageProps", {}).get("data", {}).get("articleData", {}).get("attachments", [])
-                    ):
-                        if attachment.get("fileType") == "Audio":
-                            podcast_dict["url"] = attachment.get("file")
-                            podcast_dict["uid"] = attachment.get("fileUid")
-                            podcast_dict["description"] = attachment.get("description")
-                        if attachment.get("fileType") == "Image":
-                            podcast_dict["thumb"] = attachment.get("file")
-                    try:
-                        podcasts_list.append(PrDlPodcast(**podcast_dict))
-                    except TypeError:
+                    page_props_data = data_part.get("pageProps", {}).get("data")
+                    if isinstance(page_props_data, list):
                         pass
+                    if isinstance(page_props_data, dict):
+                        podcast_dict = {
+                            "article_url": url,
+                            "title": page_props_data.get("articleData", {}).get("title", ""),
+                            "file_name": data_part.get("pageProps", {})
+                            .get("data", {})
+                            .get("articleData", {})
+                            .get("title", []),
+                        }
+                        for attachment in (
+                            data_part.get("pageProps", {}).get("data", {}).get("articleData", {}).get("attachments", [])
+                        ):
+                            if attachment.get("fileType") == "Audio":
+                                podcast_dict["url"] = attachment.get("file")
+                                podcast_dict["uid"] = attachment.get("fileUid")
+                                podcast_dict["description"] = attachment.get("description")
+                            if attachment.get("fileType") == "Image":
+                                podcast_dict["thumb"] = attachment.get("file")
+                        try:
+                            podcasts_list.append(PrDlPodcast(**podcast_dict))
+                        except TypeError:
+                            pass
                 except json.decoder.JSONDecodeError:
+                    pass
+                except AttributeError:
                     pass
         track_number = 0
         if data:
@@ -425,11 +463,11 @@ class PrDlCrawl(PrDl):
         return list(set(downloads_list))
 
     def start(self):
-        self.logger.level = logging.DEBUG if self.debug else logging.INFO
+        super().start()
         self.logger.debug(f"Url: {self.url}")
         self.logger.debug(self.__class__.__name__)
-        podcasts_list = list(set(self.get_podcasts_list()))
+        podcasts_list = self.get_podcasts_list()
         a = 1
-        for podcast_episode in podcasts_list:
-            self.download_podcast(podcast_episode, a, len(podcasts_list))
+        for podcast in podcasts_list:
+            self.download_podcast(podcast, a, len(podcasts_list))
             a += 1
