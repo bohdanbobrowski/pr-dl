@@ -169,11 +169,23 @@ class PrDlPodcast(LoggingClass):
 
 
 class PrDl(LoggingClass):
-    def __init__(self, phrase: str = "", forced_search: bool = False, save_all: bool = False):
+    def __init__(
+        self,
+        phrase: str = "",
+        url: str = "",
+        forced_search: bool = False,
+        save_all: bool = False,
+        debug: bool = False,
+    ):
         super().__init__()
         self.phrase: str = phrase
+        self.url: str = url
         self.forced_search: bool = forced_search
         self.save_all: bool = save_all
+        self.downloaded_podcasts: set[PrDlPodcast] = set()
+        self.debug: bool = debug
+        if debug:
+            self.logger.setLevel(logging.DEBUG)
 
     def confirm_save(self) -> bool:
         kb = KBHit()
@@ -191,13 +203,16 @@ class PrDl(LoggingClass):
         return os.path.abspath(os.path.join(os.path.dirname(__file__), rel_path))
 
     def download_podcast(self, podcast: PrDlPodcast, current=0, total=0):
-        self.logger.debug(f"Podcast found [{current}/{podcast}]: {podcast}")
-        puts(colored.blue("[" + str(current) + "/" + str(total) + "]"))
+        self.logger.info(f"Podcast found [{current}/{podcast}]: {podcast}")
+        puts(colored.blue(f"[{current}/{total}]"))
         puts(colored.white(f"Title: {podcast.title}", bold=True))
         puts(colored.white(f"Url: {podcast.url} ({podcast.__hash__()})"))
         puts(colored.white(f"File: {podcast.file_name}"))
         if podcast.thumbnail_url:
-            puts(colored.white("Thubnail: " + podcast.thumbnail_url))
+            puts(colored.white(f"Thubnail: {podcast.thumbnail_url}"))
+        if podcast in self.downloaded_podcasts:
+            puts(colored.green("Podcast already downloaded, skipping."))
+            return
         x = 1
         while os.path.isfile(podcast.file_name):
             podcast.file_name = podcast.get_filename(suffix=str(x))
@@ -217,12 +232,6 @@ class PrDl(LoggingClass):
 
 
 class PrDlSearch(PrDl):
-    def __init__(self, phrase, save_all=False, forced_search=False):
-        super().__init__()
-        self.phrase = phrase.lower()
-        self.forced_search = forced_search
-        self.save_all = save_all
-
     def get_files(self, results) -> list[PrDlPodcast]:
         files = []
         for r in results:
@@ -230,6 +239,7 @@ class PrDlSearch(PrDl):
             crawler = PrDlCrawl(
                 url=f"https://www.polskieradio.pl{r['url']}",
                 save_all=self.save_all,
+                debug=self.debug,
             )
             for f in crawler.get_podcasts_list():
                 if r["image"]:
@@ -271,12 +281,6 @@ class PrDlSearch(PrDl):
 
 
 class PrDlCrawl(PrDl):
-    def __init__(self, url: str, save_all: bool):
-        super().__init__()
-        self.url = url
-        self.save_all = save_all
-        self.logger.setLevel(logging.DEBUG)
-
     @staticmethod
     def get_filename(title):
         for x in ["&quot;", "„", "”", "…", "?", "(", ")"]:

@@ -20,6 +20,12 @@ def main():
         help="Save all podcasts without confirmation.",
     )
     parser.add_argument(
+        "-d",
+        "--debug",
+        action="store_true",
+        help="Turn on debug mode.",
+    )
+    parser.add_argument(
         "-f",
         "--forced",
         action="store_true",
@@ -27,9 +33,18 @@ def main():
     )
     args = parser.parse_args()
     if is_url_valid(args.url_or_search):
-        polish_radio_downloader = PrDlCrawl(args.url_or_search, args.all)
+        polish_radio_downloader = PrDlCrawl(
+            url=args.url_or_search,
+            save_all=args.all,
+            debug=args.debug,
+        )
     else:
-        polish_radio_downloader = PrDlSearch(args.url_or_search, args.all, args.forced)
+        polish_radio_downloader = PrDlSearch(
+            phrase=args.url_or_search,
+            save_all=args.all,
+            forced_search=args.forced,
+            debug=args.debug,
+        )
     polish_radio_downloader.start()
 
 
