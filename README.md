@@ -1,17 +1,25 @@
+<p align="center">
 <img src="./assets/prdl_logo_web.svg" alt="PR-DL" width="300" />
+</p>
 
-PR-DL: Polskie Radio DownLoader
-==
+# PR-DL: Polskie Radio DownLoader
+
+[![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://github.com/bohdanbobrowski/pr-dl/graphs/commit-activity) [![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](https://lbesson.mit-license.org/) ![GitHub all releases](https://img.shields.io/github/downloads/bohdanbobrowski/pr-dl/total) ![GitHub release (with filter)](https://img.shields.io/github/v/release/bohdanbobrowski/pr-dl) ![GitHub Release Date - Published_At](https://img.shields.io/github/release-date/bohdanbobrowski/pr-dl)
 
 Simple script that downloads podcasts from Polish Radio webservices.
 
-Installation:
-====
+## Installation:
 
     pip install git+https://github.com/bohdanbobrowski/pr-dl
+    
+Then:
 
-Usage:
-====
+    cd pr-dl
+    python -m venv .venv
+    source  .venv/bin/activate
+    pip install .
+
+## Usage:
 
     prdl --help
     usage: prdl [-h] [-a] [-d] [-f] [-c] url_or_search
@@ -28,8 +36,7 @@ Usage:
       -f, --forced          Don't trust PR searchengine - show only results with given keyword.
       -c, --cache           Enable local cache.
 
-Examples:
-====
+## Examples:
 
 Single url:
 
@@ -47,8 +54,6 @@ I you add `-f` script fill "force" by searching phrase (case insensitive) in giv
 
     prdl "Sergiusz Piasecki" -f
 
-
-Building:
-====
+## Building:
 
     pyinstaller prdl.spec
