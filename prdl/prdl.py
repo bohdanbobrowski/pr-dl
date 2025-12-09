@@ -105,24 +105,28 @@ class PrDlPodcast(LoggingClass):
     def get_default_thumbnail() -> str:
         return os.path.join(pathlib.Path(__file__).parent.resolve(), "prdl_logo.jpg")
 
-    def download_thumbnail(self):
-        fpath = os.getcwd() + "/" + str(self.thumbnail_file_name).strip()
-        if os.path.isfile(fpath):
-            os.remove(fpath)
-        if self.thumbnail_url:
-            urllib.request.urlretrieve(self.thumbnail_url, fpath)
-            size = (500, 500)
-            image = Image.open(fpath)
-            image.thumbnail(size, Image.LANCZOS)
-            background = Image.open(self.thumbnail_default_fn)
-            background.paste(
-                image,
-                (
-                    int((size[0] - image.size[0]) / 2),
-                    int((size[1] - image.size[1]) / 2),
-                ),
-            )
-            background.save(self.thumbnail_file_name)
+    def download_thumbnail(self) -> bool:
+        try:
+            fpath = os.getcwd() + "/" + str(self.thumbnail_file_name).strip()
+            if os.path.isfile(fpath):
+                os.remove(fpath)
+            if self.thumbnail_url:
+                urllib.request.urlretrieve(self.thumbnail_url, fpath)
+                size = (500, 500)
+                image = Image.open(fpath)
+                image.thumbnail(size, Image.LANCZOS)
+                background = Image.open(self.thumbnail_default_fn)
+                background.paste(
+                    image,
+                    (
+                        int((size[0] - image.size[0]) / 2),
+                        int((size[1] - image.size[1]) / 2),
+                    ),
+                )
+                background.save(self.thumbnail_file_name)
+            return True
+        except FileNotFoundError:
+            return False
 
     def add_thumbnail(self):
         if os.path.isfile(self.file_name):
@@ -203,8 +207,8 @@ class PrDl(LoggingClass):
                 download_bar = DownloadBar()
                 download_bar.download(url=podcast.url, dest=podcast.file_name, title=f"Downloading {podcast.file_name}")
                 podcast.id3tag()
-                podcast.download_thumbnail()
-                podcast.add_thumbnail()
+                if podcast.download_thumbnail():
+                    podcast.add_thumbnail()
 
     @staticmethod
     def get_web_page_content(url):
