@@ -31,9 +31,11 @@ Examples:
 
     prdl https://www.polskieradio.pl/8/755/Artykul/426557 -a
 
-    prdl Wańkowicz
+    prdl https://www.polskieradio.pl/podcast/ziemia-obiecana-wladyslaw-stanislaw-reymont,594 -a
 
-    prdl "Sergiusz Piasecki" -f
+    prdl Wańkowicz
+ 
+    prdl "Sergiusz Piasecki" -f -a -d
 
 Building:
 ====

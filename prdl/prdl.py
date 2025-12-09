@@ -18,22 +18,12 @@ from lxml import etree
 from PIL import Image
 from slugify import slugify
 
+from prdl.logger import Logger
 from prdl.kbhit import KBHit
 
-logger = logging.getLogger(__name__)
-ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
-formatter = logging.Formatter("%(asctime)s [%(name)s] - %(levelname)s - %(message)s")
-ch.setFormatter(formatter)
-logger.addHandler(ch)
 
 
-class LoggingClass:
-    def __init__(self):
-        self.logger = logger
-
-
-class PrDlPodcast(LoggingClass):
+class PrDlPodcast():
     def __init__(
         self,
         article_url: str,
@@ -168,7 +158,7 @@ class PrDlPodcast(LoggingClass):
                         os.remove(self.thumbnail_file_name)
 
 
-class PrDl(LoggingClass):
+class PrDl():
     def __init__(
         self,
         phrase: str = "",
@@ -184,8 +174,7 @@ class PrDl(LoggingClass):
         self.save_all: bool = save_all
         self.downloaded_podcasts: set[PrDlPodcast] = set()
         self.debug: bool = debug
-        if debug:
-            self.logger.setLevel(logging.DEBUG)
+        self.logger = Logger(name=self.__class__.__name__)
 
     def confirm_save(self) -> bool:
         kb = KBHit()
@@ -268,6 +257,9 @@ class PrDlSearch(PrDl):
             a += 1
 
     def start(self):
+        self.logger.level = logging.DEBUG if self.debug else logging.INFO
+        self.logger.debug(f"Phrase: {self.phrase}")
+        self.logger.debug(f"PrDl Class {type(self)}")
         response = json.loads(urllib.request.urlopen(self._get_search_url()).read())
         pages = round(int(response["count"]) / int(response["pageSize"]))
         podcasts_list = self.get_files(response["results"])
@@ -434,10 +426,10 @@ class PrDlCrawl(PrDl):
         return list(set(downloads_list))
 
     def start(self):
-        podcasts_list = self.get_podcasts_list()
-        self.logger.info(len(podcasts_list))
-        podcasts_list = list(set(podcasts_list))
-        self.logger.info(len(podcasts_list))
+        self.logger.level = logging.DEBUG if self.debug else logging.INFO
+        self.logger.debug(f"Url: {self.url}")
+        self.logger.debug(self.__class__.__name__)
+        podcasts_list = list(set(self.get_podcasts_list()))
         a = 1
         for podcast_episode in podcasts_list:
             self.download_podcast(podcast_episode, a, len(podcasts_list))
