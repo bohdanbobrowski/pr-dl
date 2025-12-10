@@ -11,13 +11,19 @@ Simple script that downloads podcasts from Polish Radio webservices.
 ## Installation:
 
     pip install git+https://github.com/bohdanbobrowski/pr-dl
-    
+
+### Creating local environment   
+
+First, clone repository:
+
+    git clone https://github.com/bohdanbobrowski/pr-dl.git
+
 Then:
 
     cd pr-dl
     python -m venv .venv
     source  .venv/bin/activate
-    pip install .
+    pip install -e .[dev]
 
 ## Usage:
 
