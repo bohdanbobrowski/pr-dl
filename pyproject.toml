@@ -20,6 +20,7 @@ dependencies = [
     "validators",
     "Requests",
     "hishel",
+    "httpx",
 ]
 
 [project.optional-dependencies]
