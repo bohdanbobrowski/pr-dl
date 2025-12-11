@@ -87,7 +87,7 @@
           <x>0</x>
           <y>0</y>
           <width>629</width>
-          <height>339</height>
+          <height>357</height>
          </rect>
         </property>
        </widget>
@@ -100,12 +100,18 @@
          <property name="text">
           <string>Wyczyść</string>
          </property>
+         <property name="icon">
+          <iconset theme="QIcon::ThemeIcon::ApplicationExit"/>
+         </property>
         </widget>
        </item>
        <item>
         <widget class="QPushButton" name="pushButton_2">
          <property name="text">
           <string>Pobierz zaznaczone</string>
+         </property>
+         <property name="icon">
+          <iconset theme="QIcon::ThemeIcon::GoDown"/>
          </property>
         </widget>
        </item>
@@ -120,7 +126,7 @@
      <x>0</x>
      <y>0</y>
      <width>640</width>
-     <height>24</height>
+     <height>17</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuHelp">
@@ -138,6 +144,9 @@
    </property>
   </action>
   <action name="actionGitHub_repository">
+   <property name="checkable">
+    <bool>false</bool>
+   </property>
    <property name="text">
     <string>Repozytorium na GitHubie</string>
    </property>
