@@ -33,10 +33,10 @@ class PrDlGui:
         self.window.show()
 
     def run(self):
-        # menu_help:QMenu = self.window.findChild(QMenu, "menuHelp")
-        # for menu_action in menu_help.actions():
-        #     if menu_action.objectName() == "action_git_hub_repository":
-        #         menu_action.triggered.connect(open_github_repository)
+        menu_help:QMenu = self.window.findChild(QMenu, "menuHelp")
+        for menu_action in menu_help.actions():
+            if menu_action.objectName() == "action_git_hub_repository":
+                menu_action.triggered.connect(open_github_repository)
         sys.exit(self.app.exec())
 
 
