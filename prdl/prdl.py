@@ -8,6 +8,7 @@ import re
 import sys
 import urllib
 import urllib.request
+from urllib.parse import urlparse
 
 import eyed3  # type: ignore
 import hishel
@@ -236,7 +237,7 @@ class PrDl:
                     podcast.add_thumbnail()
 
     def get_web_page_content(self, url: str):
-        response = self.httpx_client.get(url)
+        response = self.httpx_client.get(url, follow_redirects=True)
         return response.text
 
     def start(self):
@@ -349,7 +350,7 @@ class PrDlCrawl(PrDl):
     def get_occurrences(pattern: str, data) -> list[int]:
         return [match.start() for match in re.finditer(pattern, data)]
 
-    def get_podcasts(self, html_dom, article_url="") -> list[PrDlPodcast]:
+    def _get_podcasts_v1(self, html_dom, article_url="") -> list[PrDlPodcast]:
         podcasts_list = []
         html_title = html_dom.xpath("//title")[0].text.strip()
         for art in self.get_articles(html_dom):
@@ -384,11 +385,12 @@ class PrDlCrawl(PrDl):
         return podcasts_list
 
     @staticmethod
-    def get_podcasts_v2(page_data: str, url: str = "") -> list[PrDlPodcast]:
+    def _get_podcasts_v2(page_data: str, url: str = "") -> list[PrDlPodcast]:
         data = None
         podcasts_list = []
-        for keyword in ["podcasts", "podcastEpisodes"]:
-            for page_data_part in page_data.split(f'\\"{keyword}\\":')[1:]:
+        # "attachments":
+        for keyword in ['\\"podcasts\\":', '\\"podcastEpisodes\\":', '"attachments":']:
+            for page_data_part in page_data.split(keyword)[1:]:
                 page_data_part = page_data_part.replace('\\"', '"')
                 page_data_part = page_data_part.replace('\\\\"', "")
                 page_data_part = page_data_part.replace(":null,", ':"",')
@@ -441,23 +443,24 @@ class PrDlCrawl(PrDl):
         track_number = 0
         if data:
             for podcast in data:
-                podcasts_list.append(
-                    PrDlPodcast(
-                        article_url=url,
-                        description=podcast.get("description", ""),
-                        file_name=podcast.get("title"),
-                        thumb=podcast.get("coverUrl", podcast.get("imageUrl")),
-                        title=podcast.get("title"),
-                        uid=podcast.get("id"),
-                        url=podcast.get("url"),
-                        track_number=track_number,
+                if podcast.get("fileType") == "Audio":
+                    podcasts_list.append(
+                        PrDlPodcast(
+                            article_url=url,
+                            description=podcast.get("description", ""),
+                            file_name=podcast.get("title", podcast.get("description", "")),
+                            thumb=podcast.get("coverUrl", podcast.get("imageUrl")),
+                            title=podcast.get("title", podcast.get("description", "")),
+                            uid=podcast.get("id"),
+                            url=podcast.get("url"),
+                            track_number=track_number,
+                        )
                     )
-                )
                 track_number += 1
         return podcasts_list
 
     @staticmethod
-    def get_podcasts_data_media(page_data: str, article_url: str) -> list[PrDlPodcast]:
+    def _get_podcasts_data_media(page_data: str, article_url: str) -> list[PrDlPodcast]:
         podcasts_list = []
         try:
             thumbnail = re.findall('property="og:image" content="([^"]+)"', page_data)[0]
@@ -482,19 +485,33 @@ class PrDlCrawl(PrDl):
         podcasts_list = list(set(podcasts_list))
         return podcasts_list
 
-    def get_podcasts_list(self) -> list[PrDlPodcast]:
-        html = self.get_web_page_content(self.url)
-        downloads_list = self.get_podcasts_v2(html, self.url)
+    def _get_podcasts(self, page_data: str, url: str = "") -> list[PrDlPodcast]:
+        downloads_list = self._get_podcasts_v2(page_data, self.url)
         if not downloads_list:
-            downloads_list = self.get_podcasts(etree.HTML(html), self.url)
-            downloads_list += self.get_podcasts_data_media(html, self.url)
+            downloads_list = self._get_podcasts_v1(etree.HTML(page_data), self.url)
+            downloads_list += self._get_podcasts_data_media(page_data, self.url)
         return list(set(downloads_list))
+
+    def _get_related_podcasts(self, page_data: str, url: str = "") -> list[PrDlPodcast]:
+        related_podcasts = []
+        for related_podcast_url in re.findall('<article class="[^"]+">[\\s]*<a href="([^"]+)"', page_data):
+            related_url = "https://" + urlparse(self.url).netloc + related_podcast_url
+            related_page_data = self.get_web_page_content(related_url)
+            related_podcasts += self.get_podcasts_list(related_page_data, False)
+        return related_podcasts
+
+    def get_podcasts_list(self, page_data: str, related: bool = True) -> list[PrDlPodcast]:
+        podcasts_list = self._get_podcasts(page_data, self.url)
+        if related:
+            podcasts_list += self._get_related_podcasts(page_data, self.url)
+        return podcasts_list
 
     def start(self):
         super().start()
         self.logger.debug(f"Url: {self.url}")
         self.logger.debug(self.__class__.__name__)
-        podcasts_list = self.get_podcasts_list()
+        page_data = self.get_web_page_content(self.url)
+        podcasts_list = self.get_podcasts_list(page_data)
         a = 1
         for podcast in podcasts_list:
             self.download_podcast(podcast, a, len(podcasts_list))
