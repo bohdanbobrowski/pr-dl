@@ -442,18 +442,20 @@ class PrDlCrawl(PrDl):
         track_number = 0
         if data:
             for podcast in data:
-                podcasts_list.append(
-                    PrDlPodcast(
-                        article_url=url,
-                        description=podcast.get("description", ""),
-                        file_name=podcast.get("title", podcast.get("description", "")),
-                        thumb=podcast.get("coverUrl", podcast.get("imageUrl")),
-                        title=podcast.get("title", podcast.get("description", "")),
-                        uid=podcast.get("id"),
-                        url=podcast.get("url"),
-                        track_number=track_number,
-                    )
-                )
+                if podcast.get("fileType") == "Image":
+                    continue
+                podcast_dict = {
+                    "url": podcast.get("url", podcast.get("file")),
+                    "uid": podcast.get("id"),
+                    "article_url": url,
+                    "title": podcast.get("title", podcast.get("description", "")),
+                    "description": podcast.get("description", ""),
+                    "file_name": podcast.get("title", podcast.get("description", "")),
+                    "thumb": podcast.get("coverUrl", podcast.get("imageUrl")),
+                    "track_number": track_number,
+                }
+                podcast_object = PrDlPodcast(**podcast_dict)
+                podcasts_list.append(podcast_object)
                 track_number += 1
         return podcasts_list
 
