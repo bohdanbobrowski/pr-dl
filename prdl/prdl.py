@@ -393,6 +393,7 @@ class PrDlCrawl(PrDl):
             ('\\"podcasts\\":', True),
             ('\\"podcastEpisodes\\":', True),
             ('"attachments":', False),
+            ('"articles":', False),
         ]:
             for page_data_part in page_data.split(keyword)[1:]:
                 if replace:

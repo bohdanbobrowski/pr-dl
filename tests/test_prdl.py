@@ -21,7 +21,7 @@ class TestDefaultCrawler:
         # When
         result = PrDlCrawl._get_podcasts_v2(given_page_data)
         # Then
-        assert len(result) == 1
+        assert len(result) == 8
         assert (
             result[0].file_name
             == "konstytucja-3-maja-czy-mogla-uratowac-i-rzeczpospolita-historie-jak-z-ksiazki-trojka.mp3"
