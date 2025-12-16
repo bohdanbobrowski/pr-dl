@@ -388,7 +388,6 @@ class PrDlCrawl(PrDl):
     def _get_podcasts_v2(page_data: str, url: str = "") -> list[PrDlPodcast]:
         data = None
         podcasts_list = []
-        # "attachments":
         for keyword in ['\\"podcasts\\":', '\\"podcastEpisodes\\":', '"attachments":']:
             for page_data_part in page_data.split(keyword)[1:]:
                 page_data_part = page_data_part.replace('\\"', '"')

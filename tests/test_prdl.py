@@ -2,17 +2,16 @@ from prdl.prdl import PrDlCrawl, PrDlPodcast
 
 
 class TestDefaultCrawler:
-    def test_one(self):
+    def test_attachments(self):
         # Given
-        with open("./tests/data/page6.html") as f:
+        with open("./tests/data/page_with_attachments.html") as f:
             given_page_data = f.read()
         # When
         result = PrDlCrawl._get_podcasts_v2(given_page_data)
         # Then
-        pass
         assert len(result) > 0
 
-    def test_prdl_get_podcasts_v2(self):
+    def test_podcasts_escaped(self):
         # Given
         with open("./tests/data/page1.html") as f:
             given_page_data = f.read()
