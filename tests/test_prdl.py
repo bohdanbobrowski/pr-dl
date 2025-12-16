@@ -1,5 +1,3 @@
-from zipfile import ZipFile
-
 from prdl.prdl import PrDlCrawl, PrDlPodcast
 
 
@@ -18,7 +16,7 @@ class TestDefaultCrawler:
         )
 
     def test_audiobook(self):
-        """ https://www.polskieradio.pl/podcast/ziemia-obiecana-wladyslaw-stanislaw-reymont,594 """
+        """https://www.polskieradio.pl/podcast/ziemia-obiecana-wladyslaw-stanislaw-reymont,594"""
         # Given
         with open("./tests/data/audiobook_full.html") as f:
             given_page_data = f.read()

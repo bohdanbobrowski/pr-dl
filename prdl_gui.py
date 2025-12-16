@@ -3,7 +3,7 @@ import webbrowser
 
 from PySide6.QtCore import QFile, QIODevice
 from PySide6.QtUiTools import QUiLoader
-from PySide6.QtWidgets import QApplication, QMenu
+from PySide6.QtWidgets import QApplication, QMainWindow, QMenu
 
 
 def open_github_repository(inst):
@@ -12,8 +12,8 @@ def open_github_repository(inst):
 
 class PrDlGui:
     def __init__(self):
-        self.window = None
-        self.app = None
+        self.window: None | QMainWindow = None
+        self.app: None | QApplication = None
         self._init_app()
 
     def _init_app(self):
@@ -33,7 +33,7 @@ class PrDlGui:
         self.window.show()
 
     def run(self):
-        menu_help:QMenu = self.window.findChild(QMenu, "menuHelp")
+        menu_help: QMenu = self.window.findChild(QMenu, "menuHelp")
         for menu_action in menu_help.actions():
             if menu_action.objectName() == "action_git_hub_repository":
                 menu_action.triggered.connect(open_github_repository)

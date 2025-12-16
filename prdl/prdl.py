@@ -255,7 +255,8 @@ class PrDlSearch(PrDl):
                 debug=self.debug,
             )
             crawler.downloaded_podcasts = self.downloaded_podcasts
-            podcasts_list = crawler.get_podcasts_list()
+            page_data = self.get_web_page_content(crawler.url)
+            podcasts_list = crawler.get_podcasts_list(page_data, False)
             for f in podcasts_list:
                 if r["image"]:
                     default_thumb = f"https:{r['image']}"
@@ -492,7 +493,7 @@ class PrDlCrawl(PrDl):
             downloads_list += self._get_podcasts_data_media(page_data, self.url)
         return list(set(downloads_list))
 
-    def _get_related_podcasts(self, page_data: str, url: str = "") -> list[PrDlPodcast]:
+    def _get_related_podcasts(self, page_data: str) -> list[PrDlPodcast]:
         related_podcasts = []
         for related_podcast_url in re.findall('<article class="[^"]+">[\\s]*<a href="([^"]+)"', page_data):
             related_url = "https://" + urlparse(self.url).netloc + related_podcast_url
@@ -503,7 +504,7 @@ class PrDlCrawl(PrDl):
     def get_podcasts_list(self, page_data: str, related: bool = True) -> list[PrDlPodcast]:
         podcasts_list = self._get_podcasts(page_data, self.url)
         if related:
-            podcasts_list += self._get_related_podcasts(page_data, self.url)
+            podcasts_list += self._get_related_podcasts(page_data)
         return podcasts_list
 
     def start(self):
