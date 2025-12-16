@@ -16,7 +16,7 @@
     <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
     <option name="RUN_TOOL" value="" />
     <option name="SCRIPT_NAME" value="prdl.py" />
-    <option name="PARAMETERS" value="https://www.polskieradio.pl/9,trojka/5390,historie-jak-z-ksiazki" />
+    <option name="PARAMETERS" value="https://trojka.polskieradio.pl/artykul/2467181,dom-wiecznotrwaly-tu-mieszkali-sowieccy-decydenci" />
     <option name="SHOW_COMMAND_LINE" value="false" />
     <option name="EMULATE_TERMINAL" value="true" />
     <option name="MODULE_MODE" value="false" />

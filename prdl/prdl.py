@@ -389,11 +389,12 @@ class PrDlCrawl(PrDl):
     def _get_podcasts_v2(page_data: str, url: str = "") -> list[PrDlPodcast]:
         data = None
         podcasts_list = []
-        for keyword in ['\\"podcasts\\":', '\\"podcastEpisodes\\":', '"attachments":']:
+        for keyword, replace in [('\\"podcasts\\":', True), ('\\"podcastEpisodes\\":', True), ('"attachments":', False)]:
             for page_data_part in page_data.split(keyword)[1:]:
-                page_data_part = page_data_part.replace('\\"', '"')
-                page_data_part = page_data_part.replace('\\\\"', "")
-                page_data_part = page_data_part.replace(":null,", ':"",')
+                if replace:
+                    page_data_part = page_data_part.replace('\\"', '"')
+                    page_data_part = page_data_part.replace('\\\\"', "")
+                    page_data_part = page_data_part.replace(":null,", ':"",')
                 for position in PrDlCrawl.get_occurrences("]", page_data_part):
                     data_json = page_data_part[: position + 1]
                     try:

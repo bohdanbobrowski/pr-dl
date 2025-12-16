@@ -18,7 +18,7 @@ class TestDefaultCrawler:
     def test_audiobook(self):
         """https://www.polskieradio.pl/podcast/ziemia-obiecana-wladyslaw-stanislaw-reymont,594"""
         # Given
-        with open("./tests/data/audiobook_full.html") as f:
+        with open("./tests/data/audiobook.html") as f:
             given_page_data = f.read()
         # When
         result = PrDlCrawl._get_podcasts_v2(given_page_data)
