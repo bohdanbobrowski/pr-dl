@@ -4,7 +4,7 @@ from prdl.prdl import PrDlCrawl, PrDlPodcast
 class TestDefaultCrawler:
     def test_attachments(self):
         # Given
-        with open("./tests/data/page_with_attachments.html") as f:
+        with open("./tests/data/attachments.html") as f:
             given_page_data = f.read()
         # When
         result = PrDlCrawl._get_podcasts_v2(given_page_data)
@@ -26,9 +26,9 @@ class TestDefaultCrawler:
         assert result[3].file_name == "mroczna-historia-watykanu.mp3"
         assert len(result) == 10
 
-    def test_prdl_get_podcasts_v2_page2(self):
+    def test_podcasts_episodes_escaped(self):
         # Given
-        with open("./tests/data/page2.html") as f:
+        with open("./tests/data/podcasts_episodes_escaped.html") as f:
             given_page_data = f.read()
         # When
         result = PrDlCrawl._get_podcasts_v2(given_page_data)
