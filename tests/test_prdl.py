@@ -1,11 +1,23 @@
+from zipfile import ZipFile
+
 from prdl.prdl import PrDlCrawl, PrDlPodcast
+
+
+def read_compressed_demo_data(file_name: str) -> str:
+    file_data = b""
+    with ZipFile(f"./tests/data/{file_name}.zip") as zf:
+        for file in zf.namelist():
+            if not file == f"{file_name}.html":  # optional filtering by filetype
+                continue
+            with zf.open(file) as f:
+                file_data = f.read()
+    return file_data.decode()
 
 
 class TestDefaultCrawler:
     def test_attachments(self):
         # Given
-        with open("./tests/data/attachments.html") as f:
-            given_page_data = f.read()
+        given_page_data = read_compressed_demo_data("attachments")
         # When
         result = PrDlCrawl._get_podcasts_v2(given_page_data)
         # Then
@@ -18,8 +30,7 @@ class TestDefaultCrawler:
     def test_audiobook(self):
         """https://www.polskieradio.pl/podcast/ziemia-obiecana-wladyslaw-stanislaw-reymont,594"""
         # Given
-        with open("./tests/data/audiobook.html") as f:
-            given_page_data = f.read()
+        given_page_data = read_compressed_demo_data("audiobook")
         # When
         result = PrDlCrawl._get_podcasts_v2(given_page_data)
         # Then
@@ -27,8 +38,7 @@ class TestDefaultCrawler:
 
     def test_podcasts_episodes_escaped(self):
         # Given
-        with open("./tests/data/podcasts_episodes_escaped.html") as f:
-            given_page_data = f.read()
+        given_page_data = read_compressed_demo_data("podcasts_episodes_escaped")
         # When
         result = PrDlCrawl._get_podcasts_v2(given_page_data)
         # Then
@@ -36,8 +46,7 @@ class TestDefaultCrawler:
 
     def test_podcasts_escaped(self):
         # Given
-        with open("./tests/data/podcasts_escaped.html") as f:
-            given_page_data = f.read()
+        given_page_data = read_compressed_demo_data("podcasts_escaped")
         # When
         result = PrDlCrawl._get_podcasts_v2(given_page_data)
         # Then
@@ -52,8 +61,7 @@ class TestDefaultCrawler:
     def test_jedynka(self):
         """url: https://jedynka.polskieradio.pl/artykul/810503,Weterani-powstania-czyli-oczko-w-g%C5%82owie-Pi%C5%82sudskiego-"""
         # Given
-        with open("./tests/data/jedynka.html") as f:
-            given_page_data = f.read()
+        given_page_data = read_compressed_demo_data("jedynka")
         # When
         result = PrDlCrawl._get_podcasts_v2(given_page_data)
         # Then
@@ -62,8 +70,7 @@ class TestDefaultCrawler:
     def test_polskieradio24(self):
         """url: https://polskieradio24.pl/artykul/2794550,bitwa-pod-tannenbergiem-najdotkliwsza-kleska-rosji-w-wielkiej-wojnie"""
         # Given
-        with open("./tests/data/polskieradio24.html") as f:
-            given_page_data = f.read()
+        given_page_data = read_compressed_demo_data("polskieradio24")
         # When
         result = PrDlCrawl._get_podcasts_data_media(
             given_page_data,
