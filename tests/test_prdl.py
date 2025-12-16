@@ -1,3 +1,5 @@
+from zipfile import ZipFile
+
 from prdl.prdl import PrDlCrawl, PrDlPodcast
 
 
@@ -9,11 +11,16 @@ class TestDefaultCrawler:
         # When
         result = PrDlCrawl._get_podcasts_v2(given_page_data)
         # Then
-        assert len(result) > 0
+        assert len(result) == 1
+        assert (
+            result[0].file_name
+            == "konstytucja-3-maja-czy-mogla-uratowac-i-rzeczpospolita-historie-jak-z-ksiazki-trojka.mp3"
+        )
 
     def test_audiobook(self):
+        """ https://www.polskieradio.pl/podcast/ziemia-obiecana-wladyslaw-stanislaw-reymont,594 """
         # Given
-        with open("./tests/data/audiobook.html") as f:
+        with open("./tests/data/audiobook_full.html") as f:
             given_page_data = f.read()
         # When
         result = PrDlCrawl._get_podcasts_v2(given_page_data)
@@ -31,7 +38,7 @@ class TestDefaultCrawler:
 
     def test_podcasts_escaped(self):
         # Given
-        with open("./tests/data/page1.html") as f:
+        with open("./tests/data/podcasts_escaped.html") as f:
             given_page_data = f.read()
         # When
         result = PrDlCrawl._get_podcasts_v2(given_page_data)
@@ -57,7 +64,7 @@ class TestDefaultCrawler:
     def test_polskieradio24(self):
         """url: https://polskieradio24.pl/artykul/2794550,bitwa-pod-tannenbergiem-najdotkliwsza-kleska-rosji-w-wielkiej-wojnie"""
         # Given
-        with open("./tests/data/page5.html") as f:
+        with open("./tests/data/polskieradio24.html") as f:
             given_page_data = f.read()
         # When
         result = PrDlCrawl._get_podcasts_data_media(
@@ -66,3 +73,4 @@ class TestDefaultCrawler:
         )
         # Then
         assert len(result) == 1
+        assert result[0].url == "https://static.prsa.pl/351fd590-234a-4364-8061-38546a26df45.mp3"
