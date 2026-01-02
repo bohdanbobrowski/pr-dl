@@ -20,6 +20,12 @@ def main():
         help="Save all podcasts without confirmation.",
     )
     parser.add_argument(
+        "-n",
+        "--new-only",
+        action="store_true",
+        help="Save podcasts not yet downloaded (checks only by filename, so may be wrong).",
+    )
+    parser.add_argument(
         "-d",
         "--debug",
         action="store_true",
@@ -42,6 +48,7 @@ def main():
         polish_radio_downloader = PrDlCrawl(
             url=args.url_or_search,
             save_all=args.all,
+            new_only=args.new_only,
             debug=args.debug,
             cache=args.cache,
         )
@@ -49,6 +56,7 @@ def main():
         polish_radio_downloader = PrDlSearch(
             phrase=args.url_or_search,
             save_all=args.all,
+            new_only=args.new_only,
             forced_search=args.forced,
             debug=args.debug,
             cache=args.cache,

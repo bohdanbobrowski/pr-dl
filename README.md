@@ -28,7 +28,7 @@ Then:
 ## Usage:
 
     prdl --help
-    usage: prdl [-h] [-a] [-d] [-f] [-c] url_or_search
+    usage: prdl [-h] [-a] [-n] [-d] [-f] [-c] url_or_search
     
     Polish Radio Downloader
     
@@ -38,6 +38,7 @@ Then:
     options:
       -h, --help            show this help message and exit
       -a, --all             Save all podcasts without confirmation.
+      -n, --new-only        Save podcasts not yet downloaded (checks only by filename, so may be wrong).
       -d, --debug           Turn on debug mode.
       -f, --forced          Don't trust PR searchengine - show only results with given keyword.
       -c, --cache           Enable local cache.

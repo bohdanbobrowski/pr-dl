@@ -1,3 +1,5 @@
+# Lasciate ogni speranza, voi ch'intrate
+
 import hashlib
 import html
 import json
@@ -167,6 +169,7 @@ class PrDl:
         url: str = "",
         forced_search: bool = False,
         save_all: bool = False,
+        new_only: bool = False,
         debug: bool = False,
         cache: bool = False,
     ):
@@ -175,6 +178,7 @@ class PrDl:
         self.url: str = url
         self.forced_search: bool = forced_search
         self.save_all: bool = save_all
+        self.new_only: bool = new_only
         self.downloaded_podcasts: set[PrDlPodcast] = set()
         self.debug: bool = debug
         self.logger = Logger(name=self.__class__.__name__)
@@ -199,6 +203,7 @@ class PrDl:
             )
 
     def confirm_save(self) -> bool:
+        # TODO: move it to interface (CLI or GUI)
         kb = KBHit()
         puts(colored.red("Save? ([y]es / [n]o / [q]uit)"))
         key = kb.getch()
@@ -209,11 +214,8 @@ class PrDl:
             return True
         return False
 
-    @staticmethod
-    def get_resource_path(rel_path):
-        return os.path.abspath(os.path.join(os.path.dirname(__file__), rel_path))
-
     def download_podcast(self, podcast: PrDlPodcast, current=0, total=0):
+        # TODO: move it to interface (CLI or GUI)
         self.logger.info(f"Podcast found [{current}/{podcast}]: {podcast}")
         puts(colored.blue(f"[{current}/{total}]"))
         puts(colored.white(f"Title: {podcast.title}", bold=True))
@@ -221,20 +223,19 @@ class PrDl:
         puts(colored.white(f"File: {podcast.file_name}"))
         if podcast.thumbnail_url:
             puts(colored.white(f"Thubnail: {podcast.thumbnail_url}"))
-        if podcast in self.downloaded_podcasts:
+        if podcast in self.downloaded_podcasts or (os.path.isfile(podcast.file_name) and self.new_only):
             puts(colored.green("Podcast already downloaded, skipping."))
             return
         x = 1
         while os.path.isfile(podcast.file_name):
             podcast.file_name = podcast.get_filename(suffix=str(x))
             x += 1
-        else:
-            if self.save_all or self.confirm_save():
-                download_bar = DownloadBar()
-                download_bar.download(url=podcast.url, dest=podcast.file_name, title=f"Downloading {podcast.file_name}")
-                podcast.id3tag()
-                if podcast.download_thumbnail():
-                    podcast.add_thumbnail()
+        if self.save_all or self.confirm_save():
+            download_bar = DownloadBar()
+            download_bar.download(url=podcast.url, dest=podcast.file_name, title=f"Downloading {podcast.file_name}")
+            podcast.id3tag()
+            if podcast.download_thumbnail():
+                podcast.add_thumbnail()
 
     def get_web_page_content(self, url: str):
         response = self.httpx_client.get(url, follow_redirects=True)
